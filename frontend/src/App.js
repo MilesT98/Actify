@@ -415,7 +415,7 @@ const Home = () => {
               <h3 className="text-xl font-semibold mb-3">Your Groups</h3>
               <div className="space-y-3">
                 {userData.groups.map((group) => (
-                  <div key={group.id} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={group.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition duration-150">
                     <Link 
                       to={`/groups/${group.id}`}
                       className="text-lg font-medium text-indigo-600 hover:text-indigo-800"
@@ -425,20 +425,41 @@ const Home = () => {
                   </div>
                 ))}
               </div>
+              
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => navigate("/groups/create")}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mr-2"
+                >
+                  Create New Group
+                </button>
+                <button
+                  onClick={() => navigate("/groups/join")}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Join a Group
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="text-center py-4">
-              <p className="mb-4">You're not part of any groups yet.</p>
+            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="inline-block p-6 bg-indigo-100 text-indigo-600 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <p className="text-xl font-semibold mb-2">You're not part of any groups yet</p>
+              <p className="text-gray-600 mb-6">Create a group or join an existing one to get started with challenges</p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
                 <button
                   onClick={() => navigate("/groups/create")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200"
                 >
                   Create a Group
                 </button>
                 <button
                   onClick={() => navigate("/groups/join")}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200"
                 >
                   Join a Group
                 </button>
@@ -451,7 +472,7 @@ const Home = () => {
           <h2 className="text-2xl font-bold mb-4">How it Works</h2>
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center">1</div>
+              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">1</div>
               <div>
                 <h3 className="font-semibold">Join or Create a Group</h3>
                 <p className="text-gray-600">Form a group with friends (up to 15 people)</p>
@@ -459,7 +480,7 @@ const Home = () => {
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center">2</div>
+              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">2</div>
               <div>
                 <h3 className="font-semibold">Submit Weekly Activities</h3>
                 <p className="text-gray-600">Each member suggests one activity per week</p>
@@ -467,7 +488,7 @@ const Home = () => {
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center">3</div>
+              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">3</div>
               <div>
                 <h3 className="font-semibold">Complete Daily Challenges</h3>
                 <p className="text-gray-600">A random activity is selected each day</p>
@@ -475,7 +496,7 @@ const Home = () => {
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center">4</div>
+              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">4</div>
               <div>
                 <h3 className="font-semibold">Submit Photo Evidence</h3>
                 <p className="text-gray-600">Take a photo to prove you completed the activity</p>
@@ -483,7 +504,7 @@ const Home = () => {
             </div>
             
             <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center">5</div>
+              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">5</div>
               <div>
                 <h3 className="font-semibold">Vote & Earn Points</h3>
                 <p className="text-gray-600">Vote on submissions and climb the leaderboard</p>
