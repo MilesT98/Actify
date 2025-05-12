@@ -713,7 +713,7 @@ async def get_group_leaderboard(group_id: str, current_user: dict = Depends(get_
 # Test route
 @api_router.get("/")
 async def root():
-    return {"message": "Activity Challenge API"}
+    return {"message": "ACTIFY API"}
 
 # Include the router in the main app
 app.include_router(api_router)
