@@ -982,12 +982,20 @@ const JoinGroup = () => {
 const GroupDetail = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [group, setGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeTab, setActiveTab] = useState("activities");
   const [isSelectingActivity, setIsSelectingActivity] = useState(false);
+
+  useEffect(() => {
+    // Check if there's a tab preference in the location state
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchGroupData = async () => {
