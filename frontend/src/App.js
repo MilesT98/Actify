@@ -408,7 +408,7 @@ const Home = () => {
     <div className="container mx-auto py-8 px-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold mb-4">Welcome, {user.username}!</h2>
+          <h2 className="text-2xl font-bold mb-4">Welcome to ACTIFY, {user.username}!</h2>
           
           {userData?.groups && userData.groups.length > 0 ? (
             <div>
@@ -469,7 +469,7 @@ const Home = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold mb-4">How it Works</h2>
+          <h2 className="text-2xl font-bold mb-4">How ACTIFY Works</h2>
           <div className="space-y-4">
             <div className="flex items-start space-x-3">
               <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">1</div>
