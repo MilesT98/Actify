@@ -1018,11 +1018,9 @@ const GroupDetail = () => {
       
       const response = await axios.post(`${API}/activities/select-daily`, formData);
       
-      // Update the group data with the new selected activity
-      setGroup({
-        ...group,
-        today_activity: response.data
-      });
+      // Refresh the entire group data to ensure consistency
+      const groupResponse = await axios.get(`${API}/groups/${groupId}`);
+      setGroup(groupResponse.data);
     } catch (err) {
       console.error("Error selecting activity:", err);
       alert(err.response?.data?.detail || "Failed to select daily activity");
