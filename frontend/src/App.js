@@ -1484,16 +1484,28 @@ const SubmitActivity = () => {
     setIsLoading(true);
     setError("");
     
+    // Basic validation
+    if (!formData.title.trim()) {
+      setError("Activity title is required");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       await axios.post(`${API}/activities`, {
         ...formData,
         group_id: groupId
       });
       
-      navigate(`/groups/${groupId}`);
+      navigate(`/groups/${groupId}`, { 
+        state: { 
+          activeTab: "activities",
+          notification: "Activity submitted successfully! It can now be selected for a daily challenge."
+        }
+      });
     } catch (err) {
       console.error("Error submitting activity:", err);
-      setError(err.response?.data?.detail || "Failed to submit activity");
+      setError(err.response?.data?.detail || "Failed to submit activity. Please try again.");
     } finally {
       setIsLoading(false);
     }
