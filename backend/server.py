@@ -124,16 +124,31 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
+# Helper function to convert MongoDB ObjectId to string
+def convert_objectid_to_str(doc):
+    if isinstance(doc, dict):
+        for key, value in doc.items():
+            if isinstance(value, dict):
+                doc[key] = convert_objectid_to_str(value)
+            elif isinstance(value, list):
+                doc[key] = [convert_objectid_to_str(item) if isinstance(item, dict) else 
+                            str(item) if hasattr(item, '__str__') and not isinstance(item, (str, int, float, bool, type(None))) else 
+                            item 
+                            for item in value]
+            elif hasattr(value, '__str__') and not isinstance(value, (str, int, float, bool, type(None))):
+                doc[key] = str(value)
+    return doc
+
 async def get_user(username: str):
     user = await db.users.find_one({"username": username})
     if user:
-        return user
+        return convert_objectid_to_str(user)
     return None
 
 async def get_user_by_id(user_id: str):
     user = await db.users.find_one({"id": user_id})
     if user:
-        return user
+        return convert_objectid_to_str(user)
     return None
 
 async def authenticate_user(username: str, password: str):
