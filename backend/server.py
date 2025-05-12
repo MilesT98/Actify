@@ -345,11 +345,20 @@ async def get_group(group_id: str, current_user: dict = Depends(get_current_user
         }
     })
     
+    # Convert ObjectId to string if present
+    if today_activity and '_id' in today_activity:
+        today_activity['_id'] = str(today_activity['_id'])
+    
     # Get all pending activities (not yet selected)
     pending_activities = await db.activities.find({
         "group_id": group_id,
         "selected_for_date": None
     }).to_list(100)
+    
+    # Convert ObjectId to string in all pending activities
+    for activity in pending_activities:
+        if '_id' in activity:
+            activity['_id'] = str(activity['_id'])
     
     # Format response
     response = {
