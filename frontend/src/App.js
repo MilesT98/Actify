@@ -1083,6 +1083,18 @@ const GroupDetail = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
+      {notification && (
+        <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline">{notification}</span>
+          <button 
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            onClick={() => setNotification("")}
+          >
+            <span className="text-green-500">×</span>
+          </button>
+        </div>
+      )}
+      
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
         <div className="bg-indigo-600 px-6 py-4 flex flex-col md:flex-row justify-between items-center">
           <h1 className="text-2xl font-bold text-white">{group.name}</h1>
