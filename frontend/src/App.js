@@ -642,7 +642,7 @@ const Profile = () => {
     <div className="container mx-auto py-8 px-4 max-w-2xl">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">My Profile</h1>
+          <h1 className="text-2xl font-bold text-white">My ACTIFY Profile</h1>
         </div>
         
         <div className="p-6">
