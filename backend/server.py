@@ -688,10 +688,12 @@ async def get_group_leaderboard(group_id: str, current_user: dict = Depends(get_
     
     # Get all activities for this group
     activities = await db.activities.find({"group_id": group_id}).to_list(100)
+    activities = [convert_objectid_to_str(activity) for activity in activities]
     
     # For each activity, get submissions and calculate scores
     for activity in activities:
         submissions = await db.submissions.find({"activity_id": activity["id"]}).to_list(100)
+        submissions = [convert_objectid_to_str(submission) for submission in submissions]
         
         for submission in submissions:
             # Find the user in the leaderboard
