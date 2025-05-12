@@ -1627,11 +1627,17 @@ const SubmitPhoto = () => {
         }
       });
       
-      navigate(`/groups/${groupId}?tab=submissions`);
+      // Redirect to the group page with the submissions tab active
+      navigate(`/groups/${groupId}`, { state: { activeTab: "submissions" } });
     } catch (err) {
       console.error("Error submitting photo:", err);
-      setError(err.response?.data?.detail || "Failed to submit photo");
-    } finally {
+      if (err.response?.status === 400 && err.response?.data?.detail === "Already submitted for this activity") {
+        setError("You've already submitted a photo for this activity.");
+      } else if (err.response?.status === 400 && err.response?.data?.detail === "Activity has not been selected for a challenge day") {
+        setError("This activity hasn't been selected for today's challenge.");
+      } else {
+        setError(err.response?.data?.detail || "Failed to submit photo. Please try again.");
+      }
       setIsLoading(false);
     }
   };
