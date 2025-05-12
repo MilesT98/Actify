@@ -1620,9 +1620,11 @@ const SubmitPhoto = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [activity, setActivity] = useState(null);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
 
   useEffect(() => {
     const fetchActivityDetails = async () => {
+      setIsActivityLoading(true);
       try {
         // Get the group data which includes today's activity
         const response = await axios.get(`${API}/groups/${groupId}`);
@@ -1634,6 +1636,8 @@ const SubmitPhoto = () => {
       } catch (err) {
         console.error("Error fetching activity details:", err);
         setError("Failed to load activity details");
+      } finally {
+        setIsActivityLoading(false);
       }
     };
 
@@ -1643,7 +1647,13 @@ const SubmitPhoto = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError("File size should be less than 5MB");
+        return;
+      }
+      
       setPhoto(file);
+      setError(""); // Clear any previous errors
       
       // Create preview URL
       const reader = new FileReader();
@@ -1677,7 +1687,12 @@ const SubmitPhoto = () => {
       });
       
       // Redirect to the group page with the submissions tab active
-      navigate(`/groups/${groupId}`, { state: { activeTab: "submissions" } });
+      navigate(`/groups/${groupId}`, { 
+        state: { 
+          activeTab: "submissions",
+          notification: "Your photo evidence has been submitted successfully!" 
+        } 
+      });
     } catch (err) {
       console.error("Error submitting photo:", err);
       if (err.response?.status === 400 && err.response?.data?.detail === "Already submitted for this activity") {
@@ -1691,7 +1706,17 @@ const SubmitPhoto = () => {
     }
   };
 
-  if (error) {
+  if (isActivityLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !photo) {
     return (
       <div className="container mx-auto py-8 px-4 max-w-2xl">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -1711,9 +1736,17 @@ const SubmitPhoto = () => {
 
   if (!activity) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+      <div className="container mx-auto py-8 px-4 max-w-2xl">
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+          Activity not found or not selected for today. Please go back and select a daily activity first.
+        </div>
+        <div className="text-center mt-4">
+          <button
+            onClick={() => navigate(`/groups/${groupId}`)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Back to Group
+          </button>
         </div>
       </div>
     );
@@ -1745,17 +1778,33 @@ const SubmitPhoto = () => {
               </label>
               
               {previewUrl ? (
-                <div className="mb-4">
+                <div className="mb-4 relative">
                   <img
                     src={previewUrl}
                     alt="Preview"
                     className="w-full h-64 object-cover rounded border"
                   />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setPhoto(null);
+                      setPreviewUrl(null);
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    title="Remove photo"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-4">
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-4 cursor-pointer hover:bg-gray-50"
+                  onClick={() => document.getElementById('photo').click()}
+                >
                   <div className="text-gray-600 mb-2">📷 No photo selected</div>
-                  <div className="text-sm text-gray-500">Click below to choose a photo</div>
+                  <div className="text-sm text-gray-500">Click here to choose a photo</div>
                 </div>
               )}
               
@@ -1765,8 +1814,16 @@ const SubmitPhoto = () => {
                 accept="image/*"
                 capture="environment"
                 onChange={handlePhotoChange}
-                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                className="hidden w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
               />
+              
+              <button
+                type="button"
+                onClick={() => document.getElementById('photo').click()}
+                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+              >
+                {previewUrl ? "Change Photo" : "Select Photo"}
+              </button>
             </div>
             
             <div className="flex items-center justify-between">
@@ -1775,7 +1832,15 @@ const SubmitPhoto = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
                 disabled={isLoading || !photo}
               >
-                {isLoading ? "Uploading..." : "Submit Evidence"}
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : "Submit Evidence"}
               </button>
             </div>
           </form>
@@ -1787,6 +1852,7 @@ const SubmitPhoto = () => {
               <li>Make sure the image is clear and well-lit</li>
               <li>Photos are timestamped when submitted</li>
               <li>Group members will vote on submissions</li>
+              <li>Maximum file size: 5MB</li>
             </ul>
           </div>
         </div>
