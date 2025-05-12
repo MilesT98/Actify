@@ -1077,7 +1077,12 @@ const GroupDetail = () => {
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(group.invite_code);
-    alert(`Invite code ${group.invite_code} copied to clipboard`);
+    setNotification(`Invite code ${group.invite_code} copied to clipboard!`);
+    
+    // Clear the notification after 3 seconds
+    setTimeout(() => {
+      setNotification("");
+    }, 3000);
   };
 
   if (isLoading) {
