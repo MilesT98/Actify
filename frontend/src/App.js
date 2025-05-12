@@ -986,6 +986,7 @@ const GroupDetail = () => {
   const [group, setGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notification, setNotification] = useState("");
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeTab, setActiveTab] = useState("activities");
   const [isSelectingActivity, setIsSelectingActivity] = useState(false);
@@ -994,6 +995,16 @@ const GroupDetail = () => {
     // Check if there's a tab preference in the location state
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
+    }
+    
+    // Check if there's a notification in the location state
+    if (location.state?.notification) {
+      setNotification(location.state.notification);
+      // Clear notification after 5 seconds
+      const timer = setTimeout(() => {
+        setNotification("");
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [location.state]);
 
