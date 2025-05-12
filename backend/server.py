@@ -36,7 +36,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Create the main app without a prefix
-app = FastAPI(title="Activity Challenge API")
+app = FastAPI(title="ACTIFY API")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
