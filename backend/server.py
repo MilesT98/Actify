@@ -619,6 +619,10 @@ async def get_activity_submissions(activity_id: str, current_user: dict = Depend
     # Get user details for each submission
     results = []
     for submission in submissions:
+        # Convert ObjectId to string if present
+        if '_id' in submission:
+            submission['_id'] = str(submission['_id'])
+            
         user = await get_user_by_id(submission["user_id"])
         results.append({
             "id": submission["id"],
