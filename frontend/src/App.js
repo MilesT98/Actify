@@ -307,7 +307,7 @@ const Login = () => {
 
   return (
     <div className="container mx-auto max-w-md py-12">
-      <h1 className="text-3xl font-bold mb-6 text-center">Login</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Login to ACTIFY</h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
