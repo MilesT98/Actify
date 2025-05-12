@@ -1330,6 +1330,7 @@ const GroupDetail = () => {
 };
 
 const SubmissionsList = ({ groupId, activityId }) => {
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1355,30 +1356,9 @@ const SubmissionsList = ({ groupId, activityId }) => {
     try {
       await axios.post(`${API}/submissions/${submissionId}/vote`);
       
-      // Update the local state
-      setSubmissions(submissions.map(submission => {
-        if (submission.id === submissionId) {
-          const userIndex = submission.votes.indexOf(user.userId);
-          if (userIndex >= 0) {
-            // Remove vote
-            const newVotes = [...submission.votes];
-            newVotes.splice(userIndex, 1);
-            return {
-              ...submission,
-              votes: newVotes,
-              vote_count: submission.vote_count - 1
-            };
-          } else {
-            // Add vote
-            return {
-              ...submission,
-              votes: [...submission.votes, user.userId],
-              vote_count: submission.vote_count + 1
-            };
-          }
-        }
-        return submission;
-      }));
+      // Refresh submissions after voting
+      const response = await axios.get(`${API}/activities/${activityId}/submissions`);
+      setSubmissions(response.data);
     } catch (err) {
       console.error("Error voting:", err);
       alert("Failed to vote on submission");
