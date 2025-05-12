@@ -1040,9 +1040,15 @@ const GroupDetail = () => {
       // Refresh the entire group data to ensure consistency
       const groupResponse = await axios.get(`${API}/groups/${groupId}`);
       setGroup(groupResponse.data);
+      
+      // Show notification
+      setNotification("Today's activity has been selected successfully!");
+      
+      // Automatically switch to the submissions tab
+      setActiveTab("submissions");
     } catch (err) {
       console.error("Error selecting activity:", err);
-      alert(err.response?.data?.detail || "Failed to select daily activity");
+      setError(err.response?.data?.detail || "Failed to select daily activity");
     } finally {
       setIsSelectingActivity(false);
     }
