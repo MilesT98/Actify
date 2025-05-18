@@ -1344,7 +1344,7 @@ const GroupDetail = () => {
             <h2 className="text-lg font-semibold mb-2">Members ({group.members.length}/15)</h2>
             <div className="flex flex-wrap gap-2">
               {group.members.map((member) => (
-                <div key={member.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1">
+                <div key={member.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 group relative">
                   <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-300 mr-2">
                     {member.profile_photo_url ? (
                       <img
@@ -1359,6 +1359,33 @@ const GroupDetail = () => {
                     )}
                   </div>
                   <span className="text-sm">{member.username}</span>
+                  
+                  {/* Admin badge */}
+                  {group.admins && group.admins.includes(member.id) && (
+                    <span className="ml-1 text-xs bg-indigo-200 text-indigo-800 px-1 rounded">
+                      Admin
+                    </span>
+                  )}
+                  
+                  {/* Admin controls - only show if current user is an admin */}
+                  {group.admins && group.admins.includes(user.userId) && member.id !== user.userId && (
+                    <div className="hidden group-hover:block absolute right-0 top-0 translate-x-full ml-2 bg-white shadow-md rounded-md border border-gray-200 z-10">
+                      {group.admins && !group.admins.includes(member.id) ? (
+                        <button
+                          onClick={() => handlePromoteToAdmin(member.id)}
+                          className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 border-b border-gray-200"
+                        >
+                          Make Admin
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
