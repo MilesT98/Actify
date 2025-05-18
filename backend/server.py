@@ -105,6 +105,9 @@ class Activity(ActivityBase):
     created_by: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     selected_for_date: Optional[datetime] = None
+    deadline: Optional[datetime] = None
+    is_completed: bool = False
+    difficulty: Optional[str] = None  # easy, medium, hard
 
 class SubmissionBase(BaseModel):
     activity_id: str
