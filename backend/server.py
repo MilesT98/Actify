@@ -537,6 +537,22 @@ async def join_group(invite_code: str = Form(...), current_user: dict = Depends(
     # Get updated group
     updated_group = await db.groups.find_one({"id": group["id"]})
     
+    # Send notifications to group admins
+    for admin_id in updated_group.get("admins", []):
+        if admin_id != current_user["id"]:  # Don't notify the user who just joined
+            # Create notification message
+            notification_title = f"New Member in {updated_group['name']}"
+            notification_message = f"{current_user['username']} has joined your group!"
+            
+            # Create notification
+            await create_notification(
+                user_id=admin_id,
+                title=notification_title,
+                message=notification_message,
+                type="group",
+                link=f"/groups/{updated_group['id']}"
+            )
+    
     return Group(**updated_group)
 
 @api_router.post("/groups/{group_id}/members/{user_id}/remove", response_model=Dict[str, Any])
