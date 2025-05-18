@@ -299,6 +299,235 @@ class ActivityChallengeAPITest(unittest.TestCase):
         
         print("✅ Leaderboard Test Passed")
 
+    def test_10_update_profile_with_interests(self):
+        """Test updating user profile with interests"""
+        print("\n10. Testing Profile Update with Interests...")
+        
+        if not self.token:
+            self.test_02_login()
+        
+        url = f"{self.base_url}/users/profile"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        # Create form data with interests
+        interests_str = ",".join(self.test_interests)
+        data = {
+            "bio": "I love staying active and challenging myself!",
+            "interests": interests_str
+        }
+        
+        response = requests.put(url, data=data, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["bio"], data["bio"])
+        self.assertEqual(set(response.json()["interests"]), set(self.test_interests))
+        
+        print("✅ Profile Update Test Passed")
+    
+    def test_11_get_interests(self):
+        """Test getting available interests"""
+        print("\n11. Testing Get Interests...")
+        
+        url = f"{self.base_url}/interests"
+        
+        response = requests.get(url)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        
+        print("✅ Get Interests Test Passed")
+    
+    def test_12_create_activity_with_emoji_and_difficulty(self):
+        """Test creating an activity with emoji and difficulty"""
+        print("\n12. Testing Activity Creation with Emoji and Difficulty...")
+        
+        if not self.token or not self.test_group_id:
+            self.test_02_login()
+            self.test_03_create_group()
+        
+        url = f"{self.base_url}/activities"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        data = {
+            "title": f"Test Activity with Emoji {int(time.time())}",
+            "description": "A test activity with emoji and difficulty",
+            "group_id": self.test_group_id,
+            "emoji": "🏃",
+            "difficulty": "medium"
+        }
+        
+        response = requests.post(url, data=data, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], data["title"])
+        self.assertEqual(response.json()["description"], data["description"])
+        self.assertEqual(response.json()["emoji"], data["emoji"])
+        self.assertEqual(response.json()["difficulty"], data["difficulty"])
+        
+        # Save activity ID for subsequent tests
+        self.test_activity_id = response.json()["id"]
+        
+        print("✅ Activity Creation with Emoji and Difficulty Test Passed")
+    
+    def test_13_add_group_admin(self):
+        """Test adding a group admin"""
+        print("\n13. Testing Add Group Admin...")
+        
+        if not self.token or not self.test_group_id:
+            self.test_02_login()
+            self.test_03_create_group()
+            self.test_04_join_group()
+        
+        # First, login with the new user to get their token
+        url = f"{self.base_url}/auth/token"
+        data = {
+            "username": self.new_username,
+            "password": self.new_password
+        }
+        
+        response = requests.post(url, data=data)
+        new_user_token = response.json()["access_token"]
+        new_user_id = response.json()["user_id"]
+        
+        # Now try to add the new user as an admin
+        url = f"{self.base_url}/groups/{self.test_group_id}/admins/{new_user_id}/add"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        response = requests.post(url, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "Admin added successfully")
+        
+        print("✅ Add Group Admin Test Passed")
+    
+    def test_14_get_notifications(self):
+        """Test getting notifications"""
+        print("\n14. Testing Get Notifications...")
+        
+        if not self.token:
+            self.test_02_login()
+        
+        url = f"{self.base_url}/notifications"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        
+        # Save a notification ID for the next test if available
+        if response.json():
+            self.test_notification_id = response.json()[0]["id"]
+        
+        print("✅ Get Notifications Test Passed")
+    
+    def test_15_mark_notification_read(self):
+        """Test marking a notification as read"""
+        print("\n15. Testing Mark Notification Read...")
+        
+        if not self.token or not self.test_notification_id:
+            self.test_02_login()
+            self.test_14_get_notifications()
+            if not self.test_notification_id:
+                print("⚠️ Mark Notification Read Test Skipped - No notifications available")
+                return
+        
+        url = f"{self.base_url}/notifications/mark-read/{self.test_notification_id}"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        response = requests.post(url, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "Notification marked as read")
+        
+        print("✅ Mark Notification Read Test Passed")
+    
+    def test_16_mark_all_notifications_read(self):
+        """Test marking all notifications as read"""
+        print("\n16. Testing Mark All Notifications Read...")
+        
+        if not self.token:
+            self.test_02_login()
+        
+        url = f"{self.base_url}/notifications/mark-all-read"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        response = requests.post(url, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "All notifications marked as read")
+        
+        print("✅ Mark All Notifications Read Test Passed")
+    
+    def test_17_get_leaderboard_with_badges_and_streaks(self):
+        """Test getting the group leaderboard with badges and streaks"""
+        print("\n17. Testing Group Leaderboard with Badges and Streaks...")
+        
+        if not self.token or not self.test_group_id:
+            self.test_02_login()
+            self.test_03_create_group()
+        
+        url = f"{self.base_url}/groups/{self.test_group_id}/leaderboard"
+        
+        headers = {
+            "Authorization": f"Bearer {self.token}"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.json()}")
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.json(), list)
+        
+        # Check if the leaderboard entries have the new fields
+        if response.json():
+            entry = response.json()[0]
+            self.assertIn("badges", entry)
+            self.assertIn("streak", entry)
+        
+        print("✅ Leaderboard with Badges and Streaks Test Passed")
+
 def run_tests():
     test_suite = unittest.TestSuite()
     test_suite.addTest(ActivityChallengeAPITest('test_01_register_user'))
@@ -310,6 +539,14 @@ def run_tests():
     test_suite.addTest(ActivityChallengeAPITest('test_07_submit_photo'))
     test_suite.addTest(ActivityChallengeAPITest('test_08_vote_submission'))
     test_suite.addTest(ActivityChallengeAPITest('test_09_get_leaderboard'))
+    test_suite.addTest(ActivityChallengeAPITest('test_10_update_profile_with_interests'))
+    test_suite.addTest(ActivityChallengeAPITest('test_11_get_interests'))
+    test_suite.addTest(ActivityChallengeAPITest('test_12_create_activity_with_emoji_and_difficulty'))
+    test_suite.addTest(ActivityChallengeAPITest('test_13_add_group_admin'))
+    test_suite.addTest(ActivityChallengeAPITest('test_14_get_notifications'))
+    test_suite.addTest(ActivityChallengeAPITest('test_15_mark_notification_read'))
+    test_suite.addTest(ActivityChallengeAPITest('test_16_mark_all_notifications_read'))
+    test_suite.addTest(ActivityChallengeAPITest('test_17_get_leaderboard_with_badges_and_streaks'))
     
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(test_suite)
