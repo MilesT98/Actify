@@ -1261,8 +1261,6 @@ async def root():
 app.include_router(api_router)
 
 # Mount the static directory for serving uploaded files
-uploads_dir = Path("/app/backend/uploads")
-uploads_dir.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 app.add_middleware(
