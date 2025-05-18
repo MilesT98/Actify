@@ -1399,21 +1399,23 @@ const GroupDetail = () => {
                   
                   {/* Admin controls - only show if current user is an admin */}
                   {group.admins && group.admins.includes(user.userId) && member.id !== user.userId && (
-                    <div className="hidden group-hover:block absolute right-0 top-0 translate-x-full ml-2 bg-white shadow-md rounded-md border border-gray-200 z-10">
-                      {group.admins && !group.admins.includes(member.id) ? (
+                    <div className="opacity-0 group-hover:opacity-100 absolute right-0 top-0 h-full flex items-center">
+                      <div className="ml-2 bg-white shadow-md rounded-md border border-gray-200 z-10">
+                        {group.admins && !group.admins.includes(member.id) ? (
+                          <button
+                            onClick={() => handlePromoteToAdmin(member.id)}
+                            className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 border-b border-gray-200"
+                          >
+                            Make Admin
+                          </button>
+                        ) : null}
                         <button
-                          onClick={() => handlePromoteToAdmin(member.id)}
-                          className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 border-b border-gray-200"
+                          onClick={() => handleRemoveMember(member.id)}
+                          className="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-100"
                         >
-                          Make Admin
+                          Remove
                         </button>
-                      ) : null}
-                      <button
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-100"
-                      >
-                        Remove
-                      </button>
+                      </div>
                     </div>
                   )}
                 </div>
