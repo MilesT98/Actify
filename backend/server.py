@@ -139,6 +139,30 @@ class LeaderboardEntry(BaseModel):
     submissions_count: int = 0
     last_active: Optional[datetime] = None
 
+class Interest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    category: str
+    icon: Optional[str] = None
+
+class Badge(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    icon_url: str
+    criteria: str  # Description of how to earn this badge
+    tier: Optional[str] = None  # bronze, silver, gold
+    
+class Notification(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    title: str
+    message: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    read: bool = False
+    type: str  # challenge, group, system, etc.
+    link: Optional[str] = None  # Deep link to relevant content
+
 # Helper functions
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
