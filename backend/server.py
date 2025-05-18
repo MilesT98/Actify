@@ -634,9 +634,17 @@ async def add_group_admin(
 
 # Activity routes
 @api_router.post("/activities", response_model=Activity)
-async def create_activity(activity: ActivityCreate, current_user: dict = Depends(get_current_user)):
+async def create_activity(
+    title: str = Form(...),
+    description: str = Form(None),
+    emoji: str = Form(None),
+    group_id: str = Form(...),
+    difficulty: str = Form(None),
+    deadline_days: int = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
     # Check if group exists and user is a member
-    group = await db.groups.find_one({"id": activity.group_id})
+    group = await db.groups.find_one({"id": group_id})
     if not group:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -650,11 +658,24 @@ async def create_activity(activity: ActivityCreate, current_user: dict = Depends
         )
     
     # Create activity object
-    activity_dict = activity.dict()
-    activity_dict["id"] = str(uuid.uuid4())
-    activity_dict["created_by"] = current_user["id"]
-    activity_dict["created_at"] = datetime.utcnow()
-    activity_dict["selected_for_date"] = None
+    activity_dict = {
+        "title": title,
+        "description": description,
+        "emoji": emoji,
+        "group_id": group_id,
+        "id": str(uuid.uuid4()),
+        "created_by": current_user["id"],
+        "created_at": datetime.utcnow(),
+        "selected_for_date": None,
+        "is_completed": False,
+        "difficulty": difficulty
+    }
+    
+    # Set deadline if provided
+    if deadline_days is not None and deadline_days > 0:
+        activity_dict["deadline"] = datetime.utcnow() + timedelta(days=deadline_days)
+    else:
+        activity_dict["deadline"] = None
     
     # Insert activity into database
     await db.activities.insert_one(activity_dict)
