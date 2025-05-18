@@ -535,7 +535,8 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     bio: "",
-    profilePhoto: null
+    profilePhoto: null,
+    interests: []
   });
   const [previewUrl, setPreviewUrl] = useState(null);
   const [updateStatus, setUpdateStatus] = useState({
@@ -551,7 +552,8 @@ const Profile = () => {
         setUserData(response.data);
         setFormData({
           bio: response.data.bio || "",
-          profilePhoto: null
+          profilePhoto: null,
+          interests: response.data.interests || []
         });
       } catch (err) {
         console.error("Error fetching user profile:", err);
