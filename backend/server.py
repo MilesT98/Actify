@@ -314,6 +314,13 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
     # Get user's groups
     user_groups = await db.groups.find({"members": current_user["id"]}).to_list(100)
     
+    # Get user's stats
+    submissions_count = await db.submissions.count_documents({"user_id": current_user["id"]})
+    
+    # Get available interests
+    interests = await db.interests.find().to_list(100)
+    available_interests = [interest["name"] for interest in interests]
+    
     # Format user data
     user_data = {
         "id": current_user["id"],
@@ -322,6 +329,12 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
         "bio": current_user.get("bio", ""),
         "profile_photo_url": current_user.get("profile_photo_url", ""),
         "created_at": current_user["created_at"],
+        "interests": current_user.get("interests", []),
+        "available_interests": available_interests,
+        "streak": current_user.get("streak", 0),
+        "total_points": current_user.get("total_points", 0),
+        "completed_challenges": current_user.get("completed_challenges", 0),
+        "submissions_count": submissions_count,
         "groups": [{"id": group["id"], "name": group["name"]} for group in user_groups]
     }
     
