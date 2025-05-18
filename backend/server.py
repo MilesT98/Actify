@@ -94,6 +94,7 @@ class Group(GroupBase):
 class ActivityBase(BaseModel):
     title: str
     description: Optional[str] = None
+    emoji: Optional[str] = None
 
 class ActivityCreate(ActivityBase):
     group_id: str
