@@ -377,7 +377,29 @@ async def update_profile(
     del updated_user["password"]
     return updated_user
 
-# Group routes
+@api_router.get("/interests", response_model=List[Interest])
+async def get_interests():
+    interests = await db.interests.find().to_list(100)
+    # Convert ObjectId to string
+    for interest in interests:
+        if "_id" in interest:
+            interest["_id"] = str(interest["_id"])
+    return [Interest(**interest) for interest in interests]
+
+@api_router.post("/interests", response_model=Interest)
+async def create_interest(interest: Interest, current_user: dict = Depends(get_current_user)):
+    # Only allow creation of interests if the interest doesn't exist
+    existing = await db.interests.find_one({"name": interest.name})
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Interest already exists",
+        )
+    
+    interest_dict = interest.dict()
+    # Insert interest into database
+    await db.interests.insert_one(interest_dict)
+    return interest
 @api_router.post("/groups", response_model=Group)
 async def create_group(group: GroupCreate, current_user: dict = Depends(get_current_user)):
     # Generate a random 6-character invite code
