@@ -680,6 +680,21 @@ const Profile = () => {
                     </p>
                   </div>
                   
+                  <div className="bg-gray-50 p-4 rounded mb-4">
+                    <h3 className="font-semibold mb-2">Interests</h3>
+                    {userData.interests && userData.interests.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {userData.interests.map((interest, index) => (
+                          <span key={index} className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-700">No interests selected yet.</p>
+                    )}
+                  </div>
+                  
                   <div>
                     <h3 className="font-semibold mb-2">Member Since</h3>
                     <p className="text-gray-700">
