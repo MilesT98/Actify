@@ -111,6 +111,7 @@ class Activity(ActivityBase):
 
 class SubmissionBase(BaseModel):
     activity_id: str
+    caption: Optional[str] = None
 
 class SubmissionCreate(SubmissionBase):
     pass
@@ -121,6 +122,9 @@ class Submission(SubmissionBase):
     photo_url: str
     submitted_at: datetime = Field(default_factory=datetime.utcnow)
     votes: List[str] = []
+    location: Optional[Dict[str, float]] = None  # lat, lng
+    reactions: Optional[Dict[str, List[str]]] = None  # emoji: [user_ids]
+    is_featured: bool = False
 
 class LeaderboardEntry(BaseModel):
     user_id: str
