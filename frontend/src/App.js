@@ -87,7 +87,10 @@ const Navbar = () => {
         <div className="space-x-4">
           {user ? (
             <div className="flex items-center space-x-4">
-              <Link to="/profile" className="hover:underline">Profile</Link>
+              <NotificationBell />
+              <Link to="/profile" className="hover:underline flex items-center">
+                <span className="mr-1">Profile</span>
+              </Link>
               <button 
                 onClick={() => {
                   logout();
