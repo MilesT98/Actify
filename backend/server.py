@@ -741,6 +741,9 @@ async def select_daily_activity(group_id: str = Form(...), current_user: dict = 
 @api_router.post("/submissions", response_model=Submission)
 async def create_submission(
     activity_id: str = Form(...),
+    caption: str = Form(None),
+    latitude: float = Form(None),
+    longitude: float = Form(None),
     photo: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -790,12 +793,35 @@ async def create_submission(
         "activity_id": activity_id,
         "user_id": current_user["id"],
         "photo_url": photo_url,
+        "caption": caption,
         "submitted_at": datetime.utcnow(),
-        "votes": []
+        "votes": [],
+        "reactions": {},
+        "is_featured": False
     }
+    
+    # Add location if provided
+    if latitude is not None and longitude is not None:
+        submission["location"] = {"lat": latitude, "lng": longitude}
     
     # Insert into database
     await db.submissions.insert_one(submission)
+    
+    # Update user stats - increment completed challenges
+    await db.users.update_one(
+        {"id": current_user["id"]},
+        {"$inc": {"completed_challenges": 1}}
+    )
+    
+    # Mark activity as completed if all members have submitted
+    group_member_count = len(group["members"])
+    submission_count = await db.submissions.count_documents({"activity_id": activity_id})
+    
+    if submission_count >= group_member_count:
+        await db.activities.update_one(
+            {"id": activity_id},
+            {"$set": {"is_completed": True}}
+        )
     
     return Submission(**submission)
 
