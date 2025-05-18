@@ -1530,6 +1530,17 @@ const GroupDetail = () => {
                                 {index === 1 && <span className="text-gray-400 mr-2">🥈</span>}
                                 {index === 2 && <span className="text-amber-600 mr-2">🥉</span>}
                                 {index > 2 && <span className="w-6 text-center">{index + 1}</span>}
+                                
+                                {entry.previous_rank > 0 && entry.rank < entry.previous_rank && (
+                                  <span className="ml-1 text-green-600 text-xs">
+                                    ↑{entry.previous_rank - entry.rank}
+                                  </span>
+                                )}
+                                {entry.previous_rank > 0 && entry.rank > entry.previous_rank && (
+                                  <span className="ml-1 text-red-600 text-xs">
+                                    ↓{entry.rank - entry.previous_rank}
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="py-3 px-4 border-b border-gray-200">
@@ -1547,7 +1558,14 @@ const GroupDetail = () => {
                                     </div>
                                   )}
                                 </div>
-                                <span className="font-medium">{entry.username}</span>
+                                <div>
+                                  <span className="font-medium">{entry.username}</span>
+                                  {entry.submissions_count > 0 && (
+                                    <div className="text-xs text-gray-500">
+                                      {entry.submissions_count} submission{entry.submissions_count !== 1 ? 's' : ''}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-4 border-b border-gray-200 text-right font-bold">
@@ -1562,6 +1580,26 @@ const GroupDetail = () => {
                               ) : (
                                 "0"
                               )}
+                            </td>
+                            <td className="py-3 px-4 border-b border-gray-200 text-center">
+                              <div className="flex justify-center space-x-1">
+                                {entry.badges && entry.badges.map((badge, idx) => {
+                                  let badgeEmoji = "🏆";
+                                  if (badge === "regular") badgeEmoji = "⭐";
+                                  if (badge === "committed") badgeEmoji = "💪";
+                                  if (badge === "champion") badgeEmoji = "👑";
+                                  
+                                  return (
+                                    <span 
+                                      key={idx} 
+                                      className="tooltip" 
+                                      title={badge}
+                                    >
+                                      {badgeEmoji}
+                                    </span>
+                                  );
+                                })}
+                              </div>
                             </td>
                           </tr>
                         ))}
