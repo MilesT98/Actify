@@ -279,6 +279,14 @@ async def register_user(user: UserCreate):
     user_dict["id"] = str(uuid.uuid4())
     user_dict["profile_photo_url"] = None
     user_dict["created_at"] = datetime.utcnow()
+    user_dict["streak"] = 0
+    user_dict["total_points"] = 0
+    user_dict["completed_challenges"] = 0
+    user_dict["is_active"] = True
+    
+    # Initialize empty interests array if not provided
+    if "interests" not in user_dict or not user_dict["interests"]:
+        user_dict["interests"] = []
     
     # Insert user into database
     await db.users.insert_one(user_dict)
