@@ -918,36 +918,43 @@ const Profile = () => {
                   Interests
                 </label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {userData.available_interests && userData.available_interests.map((interest, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => {
-                        const isSelected = formData.interests.includes(interest);
-                        if (isSelected) {
-                          // Remove interest if already selected
-                          setFormData({
-                            ...formData,
-                            interests: formData.interests.filter(i => i !== interest)
-                          });
-                        } else {
-                          // Add interest if not selected
-                          setFormData({
-                            ...formData,
-                            interests: [...formData.interests, interest]
-                          });
-                        }
-                      }}
-                      className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                        formData.interests.includes(interest) 
-                          ? 'bg-indigo-600 text-white' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      {interest}
-                    </button>
-                  ))}
+                  {userData.available_interests ? (
+                    userData.available_interests.map((interest, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          const isSelected = formData.interests.includes(interest);
+                          if (isSelected) {
+                            // Remove interest if already selected
+                            setFormData({
+                              ...formData,
+                              interests: formData.interests.filter(i => i !== interest)
+                            });
+                          } else {
+                            // Add interest if not selected
+                            setFormData({
+                              ...formData,
+                              interests: [...formData.interests, interest]
+                            });
+                          }
+                        }}
+                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                          formData.interests.includes(interest) 
+                            ? 'bg-indigo-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {interest}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Loading interests...</p>
+                  )}
                 </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  Select your interests to better personalize your experience
+                </p>
               </div>
               
               {updateStatus.error && (
