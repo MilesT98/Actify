@@ -1079,6 +1079,75 @@ async def get_group_leaderboard(group_id: str, current_user: dict = Depends(get_
     
     return leaderboard
 
+# Notification routes
+@api_router.get("/notifications", response_model=List[Notification])
+async def get_notifications(current_user: dict = Depends(get_current_user)):
+    # Get user's notifications
+    notifications = await db.notifications.find(
+        {"user_id": current_user["id"]}
+    ).sort("created_at", -1).limit(50).to_list(50)
+    
+    # Convert ObjectId to string
+    for notification in notifications:
+        if "_id" in notification:
+            notification["_id"] = str(notification["_id"])
+    
+    return [Notification(**notification) for notification in notifications]
+
+@api_router.post("/notifications/mark-read/{notification_id}", response_model=Dict[str, Any])
+async def mark_notification_read(
+    notification_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    # Find notification
+    notification = await db.notifications.find_one({"id": notification_id})
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+    
+    # Check if notification belongs to user
+    if notification["user_id"] != current_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to modify this notification",
+        )
+    
+    # Mark as read
+    await db.notifications.update_one(
+        {"id": notification_id},
+        {"$set": {"read": True}}
+    )
+    
+    return {"message": "Notification marked as read"}
+
+@api_router.post("/notifications/mark-all-read", response_model=Dict[str, Any])
+async def mark_all_notifications_read(current_user: dict = Depends(get_current_user)):
+    # Mark all user's notifications as read
+    await db.notifications.update_many(
+        {"user_id": current_user["id"], "read": False},
+        {"$set": {"read": True}}
+    )
+    
+    return {"message": "All notifications marked as read"}
+
+# Helper function to create notifications
+async def create_notification(user_id: str, title: str, message: str, type: str, link: Optional[str] = None):
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": title,
+        "message": message,
+        "created_at": datetime.utcnow(),
+        "read": False,
+        "type": type,
+        "link": link
+    }
+    
+    await db.notifications.insert_one(notification)
+    return notification
+
 # Test route
 @api_router.get("/")
 async def root():
