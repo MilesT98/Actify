@@ -864,7 +864,58 @@ async def vote_submission(submission_id: str, current_user: dict = Depends(get_c
     
     return Submission(**updated_submission)
 
-@api_router.get("/activities/{activity_id}/submissions", response_model=List[Dict[str, Any]])
+@api_router.post("/submissions/{submission_id}/react", response_model=Submission)
+async def react_to_submission(
+    submission_id: str, 
+    emoji: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
+    # Find submission
+    submission = await db.submissions.find_one({"id": submission_id})
+    if not submission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission not found",
+        )
+    
+    # Check if user is a member of the group
+    activity = await db.activities.find_one({"id": submission["activity_id"]})
+    group = await db.groups.find_one({"id": activity["group_id"]})
+    
+    if current_user["id"] not in group["members"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this group",
+        )
+    
+    # Initialize reactions dict if it doesn't exist
+    if not submission.get("reactions"):
+        submission["reactions"] = {}
+    
+    # Add or remove reaction
+    if emoji not in submission["reactions"]:
+        submission["reactions"][emoji] = []
+    
+    if current_user["id"] in submission["reactions"][emoji]:
+        # Remove reaction
+        submission["reactions"][emoji].remove(current_user["id"])
+        if not submission["reactions"][emoji]:
+            # Remove empty emoji entry
+            del submission["reactions"][emoji]
+    else:
+        # Add reaction
+        submission["reactions"][emoji].append(current_user["id"])
+    
+    # Update submission in database
+    await db.submissions.update_one(
+        {"id": submission_id},
+        {"$set": {"reactions": submission["reactions"]}}
+    )
+    
+    # Get updated submission
+    updated_submission = await db.submissions.find_one({"id": submission_id})
+    
+    return Submission(**updated_submission)
 async def get_activity_submissions(activity_id: str, current_user: dict = Depends(get_current_user)):
     # Check if activity exists
     activity = await db.activities.find_one({"id": activity_id})
