@@ -735,6 +735,26 @@ async def select_daily_activity(group_id: str = Form(...), current_user: dict = 
     
     selected_activity["selected_for_date"] = selected_for_date
     
+    # Get activity creator
+    creator = await get_user_by_id(selected_activity["created_by"])
+    creator_name = creator["username"] if creator else "Someone"
+    
+    # Send notifications to all group members
+    for member_id in group["members"]:
+        if member_id != current_user["id"]:  # Don't notify the user who selected the activity
+            # Create notification message
+            notification_title = f"New Daily Challenge in {group['name']}"
+            notification_message = f"{creator_name}'s activity '{selected_activity['title']}' has been selected for today's challenge!"
+            
+            # Create notification
+            await create_notification(
+                user_id=member_id,
+                title=notification_title,
+                message=notification_message,
+                type="challenge",
+                link=f"/groups/{group_id}"
+            )
+    
     return Activity(**selected_activity)
 
 # Submission routes
