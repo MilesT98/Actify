@@ -133,6 +133,11 @@ class LeaderboardEntry(BaseModel):
     profile_photo_url: Optional[str] = None
     score: int = 0
     streak: int = 0
+    rank: int = 0
+    previous_rank: int = 0
+    badges: List[str] = []
+    submissions_count: int = 0
+    last_active: Optional[datetime] = None
 
 # Helper functions
 def verify_password(plain_password, hashed_password):
