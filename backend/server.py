@@ -432,10 +432,17 @@ async def create_group(
     
     # Process group photo if provided
     if group_photo:
+        # Save the group photo to disk
         file_id = str(uuid.uuid4())
         file_extension = group_photo.filename.split(".")[-1] if "." in group_photo.filename else ""
-        mock_url = f"https://storage.example.com/{file_id}.{file_extension}"
-        group_dict["group_photo_url"] = mock_url
+        file_name = f"{file_id}.{file_extension}"
+        file_path = uploads_dir / file_name
+        
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(group_photo.file, buffer)
+        
+        # Set URL to the served path
+        group_dict["group_photo_url"] = f"/uploads/{file_name}"
     else:
         group_dict["group_photo_url"] = None
     
