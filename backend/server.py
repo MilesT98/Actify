@@ -360,11 +360,17 @@ async def update_profile(
         update_data["interests"] = interests_list
     
     if profile_photo:
-        # In a real implementation, upload to S3 or similar
+        # Save the profile photo to disk
         file_id = str(uuid.uuid4())
         file_extension = profile_photo.filename.split(".")[-1] if "." in profile_photo.filename else ""
-        mock_url = f"https://storage.example.com/{file_id}.{file_extension}"
-        update_data["profile_photo_url"] = mock_url
+        file_name = f"{file_id}.{file_extension}"
+        file_path = uploads_dir / file_name
+        
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(profile_photo.file, buffer)
+        
+        # Set URL to the served path
+        update_data["profile_photo_url"] = f"/uploads/{file_name}"
     
     if update_data:
         await db.users.update_one(
