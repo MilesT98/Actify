@@ -1273,6 +1273,36 @@ const GroupDetail = () => {
       setNotification("");
     }, 3000);
   };
+  
+  const handlePromoteToAdmin = async (userId) => {
+    try {
+      const response = await axios.post(`${API}/groups/${groupId}/admins/${userId}/add`);
+      setNotification("User promoted to admin successfully!");
+      
+      // Refresh group data
+      const groupResponse = await axios.get(`${API}/groups/${groupId}`);
+      setGroup(groupResponse.data);
+    } catch (err) {
+      console.error("Error promoting to admin:", err);
+      setError(err.response?.data?.detail || "Failed to promote user to admin");
+    }
+  };
+  
+  const handleRemoveMember = async (userId) => {
+    if (window.confirm("Are you sure you want to remove this member from the group?")) {
+      try {
+        const response = await axios.post(`${API}/groups/${groupId}/members/${userId}/remove`);
+        setNotification("Member removed successfully!");
+        
+        // Refresh group data
+        const groupResponse = await axios.get(`${API}/groups/${groupId}`);
+        setGroup(groupResponse.data);
+      } catch (err) {
+        console.error("Error removing member:", err);
+        setError(err.response?.data?.detail || "Failed to remove member");
+      }
+    }
+  };
 
   if (isLoading) {
     return (
