@@ -403,7 +403,11 @@ async def create_interest(interest: Interest, current_user: dict = Depends(get_c
 
 # Group routes
 @api_router.post("/groups", response_model=Group)
-async def create_group(group: GroupCreate, current_user: dict = Depends(get_current_user)):
+async def create_group(
+    group: GroupCreate, 
+    group_photo: UploadFile = File(None),
+    current_user: dict = Depends(get_current_user)
+):
     # Generate a random 6-character invite code
     invite_code = ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=6))
     
@@ -412,8 +416,20 @@ async def create_group(group: GroupCreate, current_user: dict = Depends(get_curr
     group_dict["id"] = str(uuid.uuid4())
     group_dict["created_by"] = current_user["id"]
     group_dict["members"] = [current_user["id"]]
+    group_dict["admins"] = [current_user["id"]]  # Creator is admin by default
     group_dict["invite_code"] = invite_code
     group_dict["created_at"] = datetime.utcnow()
+    group_dict["is_active"] = True
+    group_dict["max_members"] = 15
+    
+    # Process group photo if provided
+    if group_photo:
+        file_id = str(uuid.uuid4())
+        file_extension = group_photo.filename.split(".")[-1] if "." in group_photo.filename else ""
+        mock_url = f"https://storage.example.com/{file_id}.{file_extension}"
+        group_dict["group_photo_url"] = mock_url
+    else:
+        group_dict["group_photo_url"] = None
     
     # Insert group into database
     await db.groups.insert_one(group_dict)
