@@ -520,11 +520,12 @@ async def join_group(invite_code: str = Form(...), current_user: dict = Depends(
             detail="Already a member of this group",
         )
     
-    # Check if group is full (max 15 members)
-    if len(group["members"]) >= 15:
+    # Check if group is full (max members)
+    max_members = group.get("max_members", 15)
+    if len(group["members"]) >= max_members:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Group is full (15 members max)",
+            detail=f"Group is full ({max_members} members max)",
         )
     
     # Add user to group
@@ -537,6 +538,99 @@ async def join_group(invite_code: str = Form(...), current_user: dict = Depends(
     updated_group = await db.groups.find_one({"id": group["id"]})
     
     return Group(**updated_group)
+
+@api_router.post("/groups/{group_id}/members/{user_id}/remove", response_model=Dict[str, Any])
+async def remove_group_member(
+    group_id: str, 
+    user_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    # Check if group exists
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+    
+    # Check if current user is admin
+    if current_user["id"] not in group.get("admins", []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only group admins can remove members",
+        )
+    
+    # Check if user to remove exists and is a member
+    if user_id not in group["members"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a member of this group",
+        )
+    
+    # If the user is the last admin, prevent removal
+    if user_id in group.get("admins", []) and len(group.get("admins", [])) == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove the last admin from the group",
+        )
+    
+    # Remove user from members
+    await db.groups.update_one(
+        {"id": group_id},
+        {"$pull": {"members": user_id}}
+    )
+    
+    # Remove from admins if they were an admin
+    if user_id in group.get("admins", []):
+        await db.groups.update_one(
+            {"id": group_id},
+            {"$pull": {"admins": user_id}}
+        )
+    
+    return {"message": "Member removed successfully"}
+
+@api_router.post("/groups/{group_id}/admins/{user_id}/add", response_model=Dict[str, Any])
+async def add_group_admin(
+    group_id: str, 
+    user_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    # Check if group exists
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Group not found",
+        )
+    
+    # Check if current user is admin
+    if current_user["id"] not in group.get("admins", []):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only group admins can add new admins",
+        )
+    
+    # Check if user to promote exists and is a member
+    if user_id not in group["members"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a member of this group",
+        )
+    
+    # Check if user is already an admin
+    if user_id in group.get("admins", []):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already an admin",
+        )
+    
+    # Add user to admins
+    await db.groups.update_one(
+        {"id": group_id},
+        {"$push": {"admins": user_id}}
+    )
+    
+    return {"message": "Admin added successfully"}
 
 # Activity routes
 @api_router.post("/activities", response_model=Activity)
