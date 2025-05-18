@@ -843,6 +843,22 @@ async def create_submission(
             {"$set": {"is_completed": True}}
         )
     
+    # Send notifications to group members
+    for member_id in group["members"]:
+        if member_id != current_user["id"] and member_id in group.get("admins", []):  # Notify only admins
+            # Create notification message
+            notification_title = f"New Submission in {group['name']}"
+            notification_message = f"{current_user['username']} has submitted a photo for the challenge '{activity['title']}'!"
+            
+            # Create notification
+            await create_notification(
+                user_id=member_id,
+                title=notification_title,
+                message=notification_message,
+                type="submission",
+                link=f"/groups/{group['id']}/activities/{activity_id}/submissions"
+            )
+    
     return Submission(**submission)
 
 @api_router.post("/submissions/{submission_id}/vote", response_model=Submission)
