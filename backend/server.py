@@ -833,10 +833,17 @@ async def create_submission(
             detail="Already submitted for this activity",
         )
     
-    # Process photo upload (mock implementation)
+    # Process photo upload
     file_id = str(uuid.uuid4())
     file_extension = photo.filename.split(".")[-1] if "." in photo.filename else ""
-    photo_url = f"https://storage.example.com/{file_id}.{file_extension}"
+    file_name = f"{file_id}.{file_extension}"
+    file_path = uploads_dir / file_name
+    
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(photo.file, buffer)
+    
+    # Set URL to the served path
+    photo_url = f"/uploads/{file_name}"
     
     # Create submission
     submission = {
