@@ -13,6 +13,7 @@ class ActivityChallengeAPITest(unittest.TestCase):
         self.test_group_id = None
         self.test_activity_id = None
         self.test_submission_id = None
+        self.test_notification_id = None
         
         # Test user credentials
         self.test_username = "testuser"
@@ -22,6 +23,9 @@ class ActivityChallengeAPITest(unittest.TestCase):
         self.new_username = f"testuser_{int(time.time())}"
         self.new_email = f"{self.new_username}@example.com"
         self.new_password = "Test123!"
+        
+        # Test interests
+        self.test_interests = ["running", "yoga", "hiking"]
 
     def test_01_register_user(self):
         """Test user registration"""
