@@ -1750,15 +1750,31 @@ const SubmitActivity = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: "",
-    description: ""
+    description: "",
+    emoji: "",
+    difficulty: "medium",
+    deadline_days: 7
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // Common emoji options
+  const popularEmojis = [
+    "🏃‍♂️", "🏋️‍♀️", "🧘‍♀️", "🚴‍♀️", "🥗", "🍎", "📚", "🎨", "🎭", 
+    "🎸", "🧠", "💰", "👨‍👩‍👧‍👦", "❤️", "🌱", "🌊", "🏔️", "🧹", "✍️"
+  ];
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    });
+  };
+  
+  const handleEmojiSelect = (emoji) => {
+    setFormData({
+      ...formData,
+      emoji
     });
   };
 
@@ -1775,10 +1791,16 @@ const SubmitActivity = () => {
     }
     
     try {
-      await axios.post(`${API}/activities`, {
-        ...formData,
-        group_id: groupId
-      });
+      // Create FormData object for the multipart/form-data request
+      const requestData = new FormData();
+      requestData.append("title", formData.title);
+      requestData.append("description", formData.description || "");
+      requestData.append("emoji", formData.emoji || "");
+      requestData.append("group_id", groupId);
+      requestData.append("difficulty", formData.difficulty);
+      requestData.append("deadline_days", formData.deadline_days);
+      
+      await axios.post(`${API}/activities`, requestData);
       
       navigate(`/groups/${groupId}`, { 
         state: { 
