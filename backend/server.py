@@ -68,6 +68,10 @@ class User(UserBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     profile_photo_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    streak: int = 0
+    total_points: int = 0
+    completed_challenges: int = 0
+    is_active: bool = True
 
 class GroupBase(BaseModel):
     name: str
