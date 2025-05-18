@@ -898,6 +898,7 @@ async def vote_submission(submission_id: str, current_user: dict = Depends(get_c
         )
     
     # Check if user already voted
+    vote_added = False
     if current_user["id"] in submission["votes"]:
         # Remove vote
         await db.submissions.update_one(
@@ -906,6 +907,7 @@ async def vote_submission(submission_id: str, current_user: dict = Depends(get_c
         )
     else:
         # Add vote
+        vote_added = True
         await db.submissions.update_one(
             {"id": submission_id},
             {"$push": {"votes": current_user["id"]}}
@@ -913,6 +915,30 @@ async def vote_submission(submission_id: str, current_user: dict = Depends(get_c
     
     # Get updated submission
     updated_submission = await db.submissions.find_one({"id": submission_id})
+    
+    # If a vote was added (not removed), send notification to submission owner
+    if vote_added and submission["user_id"] != current_user["id"]:
+        # Get submission owner
+        submission_owner = await get_user_by_id(submission["user_id"])
+        if submission_owner:
+            # Create notification message
+            notification_title = "Your submission got a vote!"
+            notification_message = f"{current_user['username']} voted for your submission in {group['name']}."
+            
+            # Create notification
+            await create_notification(
+                user_id=submission["user_id"],
+                title=notification_title,
+                message=notification_message,
+                type="vote",
+                link=f"/groups/{group['id']}/activities/{activity['id']}/submissions"
+            )
+            
+            # Update user stats - increment total points
+            await db.users.update_one(
+                {"id": submission["user_id"]},
+                {"$inc": {"total_points": 1}}
+            )
     
     return Submission(**updated_submission)
 
