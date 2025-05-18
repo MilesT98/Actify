@@ -343,6 +343,7 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
 @api_router.put("/users/profile", response_model=User)
 async def update_profile(
     bio: str = Form(None), 
+    interests: str = Form(None),
     profile_photo: UploadFile = File(None),
     current_user: dict = Depends(get_current_user)
 ):
@@ -350,6 +351,11 @@ async def update_profile(
     
     if bio is not None:
         update_data["bio"] = bio
+    
+    if interests is not None:
+        # Convert comma-separated string to list
+        interests_list = [interest.strip() for interest in interests.split(",") if interest.strip()]
+        update_data["interests"] = interests_list
     
     if profile_photo:
         # In a real implementation, upload to S3 or similar
