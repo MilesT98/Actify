@@ -1518,6 +1518,7 @@ const GroupDetail = () => {
                           <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
                           <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase">Score</th>
                           <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase">Streak</th>
+                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold text-gray-600 uppercase">Badges</th>
                         </tr>
                       </thead>
                       <tbody>
