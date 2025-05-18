@@ -916,6 +916,8 @@ async def react_to_submission(
     updated_submission = await db.submissions.find_one({"id": submission_id})
     
     return Submission(**updated_submission)
+
+@api_router.get("/activities/{activity_id}/submissions", response_model=List[Dict[str, Any]])
 async def get_activity_submissions(activity_id: str, current_user: dict = Depends(get_current_user)):
     # Check if activity exists
     activity = await db.activities.find_one({"id": activity_id})
