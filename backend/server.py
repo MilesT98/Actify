@@ -400,6 +400,8 @@ async def create_interest(interest: Interest, current_user: dict = Depends(get_c
     # Insert interest into database
     await db.interests.insert_one(interest_dict)
     return interest
+
+# Group routes
 @api_router.post("/groups", response_model=Group)
 async def create_group(group: GroupCreate, current_user: dict = Depends(get_current_user)):
     # Generate a random 6-character invite code
