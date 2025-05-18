@@ -84,8 +84,12 @@ class Group(GroupBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_by: str
     members: List[str] = []
+    admins: List[str] = []
     invite_code: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    group_photo_url: Optional[str] = None
+    is_active: bool = True
+    max_members: int = 15
 
 class ActivityBase(BaseModel):
     title: str
