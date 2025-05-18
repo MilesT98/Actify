@@ -59,6 +59,7 @@ class UserBase(BaseModel):
     username: str
     email: EmailStr
     bio: Optional[str] = None
+    interests: Optional[List[str]] = []
 
 class UserCreate(UserBase):
     password: str
