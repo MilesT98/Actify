@@ -981,16 +981,60 @@ async def get_group_leaderboard(group_id: str, current_user: dict = Depends(get_
     
     # Initialize leaderboard entries for all group members
     leaderboard = []
+    previous_leaderboard = await db.leaderboard_history.find_one(
+        {"group_id": group_id},
+        sort=[("created_at", -1)]
+    )
+    
     for member_id in group["members"]:
         user = await get_user_by_id(member_id)
         if user:
+            # Get user's submission count
+            submissions_count = await db.submissions.count_documents({
+                "user_id": user["id"],
+                "activity_id": {"$in": [activity["id"] for activity in await db.activities.find({"group_id": group_id}).to_list(100)]}
+            })
+            
+            # Find previous rank if available
+            previous_rank = 0
+            if previous_leaderboard and "entries" in previous_leaderboard:
+                for entry in previous_leaderboard["entries"]:
+                    if entry["user_id"] == user["id"]:
+                        previous_rank = entry.get("rank", 0)
+                        break
+            
+            # Get user's streak
+            streak = user.get("streak", 0)
+            
+            # Get user's badges
+            badges = []
+            # Add badges based on submission count
+            if submissions_count >= 10:
+                badges.append("regular")
+            if submissions_count >= 30:
+                badges.append("committed")
+            if submissions_count >= 50:
+                badges.append("champion")
+            
+            # Get last active date
+            last_submission = await db.submissions.find_one(
+                {"user_id": user["id"]},
+                sort=[("submitted_at", -1)]
+            )
+            last_active = last_submission["submitted_at"] if last_submission else None
+            
             leaderboard.append(LeaderboardEntry(
                 user_id=user["id"],
                 group_id=group_id,
                 username=user["username"],
                 profile_photo_url=user.get("profile_photo_url", ""),
                 score=0,
-                streak=0
+                streak=streak,
+                rank=0,  # Will be set after sorting
+                previous_rank=previous_rank,
+                badges=badges,
+                submissions_count=submissions_count,
+                last_active=last_active
             ))
     
     # Get all activities for this group
@@ -1011,9 +1055,27 @@ async def get_group_leaderboard(group_id: str, current_user: dict = Depends(get_
                     
                     # Add points for votes (1 point per vote)
                     entry.score += len(submission["votes"])
+                    
+                    # Add points for reactions (0.5 points per reaction)
+                    reaction_count = sum(len(users) for users in submission.get("reactions", {}).values())
+                    entry.score += reaction_count * 0.5
     
     # Sort leaderboard by score (descending)
     leaderboard.sort(key=lambda x: x.score, reverse=True)
+    
+    # Assign ranks
+    for i, entry in enumerate(leaderboard):
+        entry.rank = i + 1
+    
+    # Store leaderboard history
+    leaderboard_history = {
+        "id": str(uuid.uuid4()),
+        "group_id": group_id,
+        "created_at": datetime.utcnow(),
+        "entries": [entry.dict() for entry in leaderboard]
+    }
+    
+    await db.leaderboard_history.insert_one(leaderboard_history)
     
     return leaderboard
 
