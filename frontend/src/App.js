@@ -599,6 +599,11 @@ const Profile = () => {
       const formDataObj = new FormData();
       formDataObj.append("bio", formData.bio);
       
+      // Add interests as a comma-separated string
+      if (formData.interests && formData.interests.length > 0) {
+        formDataObj.append("interests", formData.interests.join(","));
+      }
+      
       if (formData.profilePhoto) {
         formDataObj.append("profile_photo", formData.profilePhoto);
       }
@@ -612,7 +617,8 @@ const Profile = () => {
       setUserData({
         ...userData,
         bio: response.data.bio,
-        profile_photo_url: response.data.profile_photo_url
+        profile_photo_url: response.data.profile_photo_url,
+        interests: response.data.interests || []
       });
       
       setUpdateStatus({ isUpdating: false, success: true, error: "" });
