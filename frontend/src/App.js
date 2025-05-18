@@ -784,6 +784,43 @@ const Profile = () => {
                 ></textarea>
               </div>
               
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Interests
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {userData.available_interests && userData.available_interests.map((interest, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        const isSelected = formData.interests.includes(interest);
+                        if (isSelected) {
+                          // Remove interest if already selected
+                          setFormData({
+                            ...formData,
+                            interests: formData.interests.filter(i => i !== interest)
+                          });
+                        } else {
+                          // Add interest if not selected
+                          setFormData({
+                            ...formData,
+                            interests: [...formData.interests, interest]
+                          });
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                        formData.interests.includes(interest) 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      {interest}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
               {updateStatus.error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                   {updateStatus.error}
