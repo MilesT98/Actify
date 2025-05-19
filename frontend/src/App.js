@@ -31,6 +31,9 @@ const AuthProvider = ({ children }) => {
         username,
       });
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      console.log("User session restored from localStorage", { token, userId, username });
+    } else {
+      console.log("No user session found in localStorage");
     }
     setLoading(false);
   }, []);
