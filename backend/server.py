@@ -1353,6 +1353,8 @@ async def get_global_leaderboard(current_user: dict = Depends(get_current_user))
     # Create leaderboard
     leaderboard = []
     for user in users:
+        if "_id" in user:
+            user["_id"] = str(user["_id"])
         entry = {
             "id": user["id"],
             "username": user["username"],
