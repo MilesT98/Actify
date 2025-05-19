@@ -851,8 +851,9 @@ async def create_submission(
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(photo.file, buffer)
     
-    # Set URL to the served path
-    photo_url = f"/uploads/{file_name}"
+    # Set URL to the served path with full domain
+    base_url = get_base_url()
+    photo_url = f"{base_url}/uploads/{file_name}"
     
     # Create submission
     submission = {
