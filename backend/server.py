@@ -1297,8 +1297,10 @@ async def get_active_challenges(current_user: dict = Depends(get_current_user)):
         "is_completed": False
     }).to_list(100)
     
-    # Mark today's challenge
+    # Mark today's challenge and convert ObjectId
     for challenge in active_challenges:
+        if "_id" in challenge:
+            challenge["_id"] = str(challenge["_id"])
         challenge_date = challenge["selected_for_date"].replace(hour=0, minute=0, second=0, microsecond=0)
         challenge["is_today"] = challenge_date == today
     
@@ -1308,6 +1310,12 @@ async def get_active_challenges(current_user: dict = Depends(get_current_user)):
 async def get_featured_challenges(current_user: dict = Depends(get_current_user)):
     # Get some random activities to show as featured
     featured = await db.activities.find({}).limit(5).to_list(5)
+    
+    # Convert ObjectId to string
+    for challenge in featured:
+        if "_id" in challenge:
+            challenge["_id"] = str(challenge["_id"])
+    
     return featured
 
 @api_router.get("/challenges/history", response_model=List[Dict[str, Any]])
@@ -1323,8 +1331,10 @@ async def get_challenge_history(current_user: dict = Depends(get_current_user)):
         "selected_for_date": {"$lt": today}
     }).sort("selected_for_date", -1).limit(20).to_list(20)
     
-    # Get submissions for each challenge
+    # Get submissions for each challenge and convert ObjectId
     for challenge in past_challenges:
+        if "_id" in challenge:
+            challenge["_id"] = str(challenge["_id"])
         submission = await db.submissions.find_one({
             "activity_id": challenge["id"],
             "user_id": current_user["id"]
