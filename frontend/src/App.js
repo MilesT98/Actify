@@ -1040,7 +1040,7 @@ const Profile = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-4xl text-gray-400">{userData.username.charAt(0).toUpperCase()}</div>
+                      <div className="text-4xl text-gray-400">{userData?.username?.charAt(0).toUpperCase() || '?'}</div>
                     </div>
                   )}
                 </div>
