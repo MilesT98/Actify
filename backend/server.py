@@ -449,8 +449,9 @@ async def create_group(
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(group_photo.file, buffer)
         
-        # Set URL to the served path
-        group_dict["group_photo_url"] = f"/uploads/{file_name}"
+        # Set URL to the served path with full domain
+        base_url = get_base_url()
+        group_dict["group_photo_url"] = f"{base_url}/uploads/{file_name}"
     else:
         group_dict["group_photo_url"] = None
     
