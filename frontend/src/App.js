@@ -534,67 +534,86 @@ const Home = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-12 px-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold mb-4">Welcome to ACTIFY, {user.username}!</h2>
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-white">
+            <h2 className="text-2xl font-bold">Welcome to ACTIFY, {user.username}!</h2>
+          </div>
+          <div className="p-6">
           
           {userData?.groups && userData.groups.length > 0 ? (
             <div>
-              <h3 className="text-xl font-semibold mb-3">Your Groups</h3>
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">Your Groups</h3>
               <div className="space-y-3">
                 {userData.groups.map((group) => (
-                  <div key={group.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition duration-150">
+                  <div key={group.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-white transition-all duration-200 hover:shadow-md transform hover:-translate-y-1">
                     <Link 
                       to={`/groups/${group.id}`}
-                      className="text-lg font-medium text-indigo-600 hover:text-indigo-800"
+                      className="text-lg font-medium text-indigo-600 hover:text-indigo-800 flex justify-between items-center"
                     >
-                      {group.name}
+                      <span>{group.name}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
                     </Link>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-6 flex justify-center">
+              <div className="mt-8 flex justify-center gap-4">
                 <button
                   onClick={() => navigate("/groups/create")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mr-2"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
                   Create New Group
                 </button>
                 <button
                   onClick={() => navigate("/groups/join")}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+                  </svg>
                   Join a Group
                 </button>
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <div className="inline-block p-6 bg-indigo-100 text-indigo-600 rounded-full mb-4">
+            <div className="text-center py-8 bg-gradient-to-b from-gray-50 to-white rounded-lg border-2 border-dashed border-gray-300">
+              <div className="inline-block p-6 bg-indigo-100 text-indigo-600 rounded-full mb-4 shadow-inner">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
               <p className="text-xl font-semibold mb-2">You're not part of any groups yet</p>
-              <p className="text-gray-600 mb-6">Create a group or join an existing one to get started with challenges</p>
-              <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <p className="text-gray-600 mb-8 px-4">Create a group or join an existing one to get started with challenges</p>
+              <div className="flex flex-col sm:flex-row justify-center gap-4 px-4">
                 <button
                   onClick={() => navigate("/groups/create")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
                   Create a Group
                 </button>
                 <button
                   onClick={() => navigate("/groups/join")}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200"
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+                  </svg>
                   Join a Group
                 </button>
               </div>
             </div>
           )}
+          </div>
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-6">
