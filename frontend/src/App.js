@@ -229,20 +229,38 @@ const Home = () => {
       try {
         // If user is logged in, fetch their data
         if (user) {
-          const userResponse = await axios.get(`${API}/users/me`);
-          setUserData(userResponse.data);
+          try {
+            const userResponse = await axios.get(`${API}/users/me`);
+            setUserData(userResponse.data);
+          } catch (userErr) {
+            console.error("Error fetching user data:", userErr);
+            // Don't set global error for just user data
+          }
         }
         
         // Fetch top users
-        const topUsersResponse = await axios.get(`${API}/users/top`);
-        setTopUsers(topUsersResponse.data || []);
+        try {
+          const topUsersResponse = await axios.get(`${API}/users/top`);
+          setTopUsers(topUsersResponse.data || []);
+        } catch (topUsersErr) {
+          console.error("Error fetching top users:", topUsersErr);
+          setTopUsers([]);
+        }
         
         // Fetch featured challenges
-        const challengesResponse = await axios.get(`${API}/challenges/featured`);
-        setFeaturedChallenges(challengesResponse.data || []);
+        try {
+          const challengesResponse = await axios.get(`${API}/challenges/featured`);
+          setFeaturedChallenges(challengesResponse.data || []);
+        } catch (challengesErr) {
+          console.error("Error fetching featured challenges:", challengesErr);
+          setFeaturedChallenges([]);
+        }
+
+        // No global error set, just using empty arrays for missing data
+        setError(null);
       } catch (err) {
-        console.error("Error fetching home data:", err);
-        setError("Failed to load home data. Please try again later.");
+        console.error("Global error fetching home data:", err);
+        setError("Failed to load some data. The application will still work with limited functionality.");
       } finally {
         setIsLoading(false);
       }
