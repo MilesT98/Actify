@@ -966,7 +966,7 @@ const Profile = () => {
                   <div className="bg-gray-50 p-4 rounded mb-4">
                     <h3 className="font-semibold mb-2">Bio</h3>
                     <p className="text-gray-700">
-                      {userData.bio || "No bio provided yet."}
+                      {userData?.bio || "No bio provided yet."}
                     </p>
                   </div>
                   
