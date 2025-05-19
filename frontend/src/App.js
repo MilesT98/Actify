@@ -1032,10 +1032,10 @@ const Profile = () => {
                       alt="Profile Preview"
                       className="w-full h-full object-cover"
                     />
-                  ) : userData.profile_photo_url ? (
+                  ) : userData?.profile_photo_url ? (
                     <img
                       src={userData.profile_photo_url}
-                      alt={userData.username}
+                      alt={userData?.username || 'User'}
                       className="w-full h-full object-cover"
                     />
                   ) : (
