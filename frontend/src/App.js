@@ -1919,8 +1919,8 @@ const SubmissionsList = ({ groupId, activityId }) => {
               </div>
             </div>
             
-            <div className="mb-3">
-              <img
+            <div className="mb-3 relative">
+              <SafeImage
                 src={submission.photo_url}
                 alt="Activity submission"
                 className="w-full h-64 object-cover rounded"
