@@ -376,8 +376,9 @@ async def update_profile(
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(profile_photo.file, buffer)
         
-        # Set URL to the served path
-        update_data["profile_photo_url"] = f"/uploads/{file_name}"
+        # Set URL to the served path with full domain
+        base_url = get_base_url()
+        update_data["profile_photo_url"] = f"{base_url}/uploads/{file_name}"
     
     if update_data:
         await db.users.update_one(
