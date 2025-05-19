@@ -207,30 +207,40 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   return (
-    <nav className="bg-indigo-600 text-white p-4">
+    <nav className="bg-gradient-to-r from-indigo-700 to-purple-700 text-white p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold">ACTIFY</Link>
+        <Link to="/" className="text-2xl font-bold flex items-center">
+          <span className="bg-white text-indigo-600 rounded-lg p-1 mr-2 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </span>
+          ACTIFY
+        </Link>
         <div className="space-x-4">
           {user ? (
             <div className="flex items-center space-x-4">
               <NotificationBell />
-              <Link to="/profile" className="hover:underline flex items-center">
-                <span className="mr-1">Profile</span>
+              <Link to="/profile" className="hover:text-indigo-200 transition-colors duration-200 flex items-center bg-indigo-600 bg-opacity-40 px-3 py-1 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>{user.username}</span>
               </Link>
               <button 
                 onClick={() => {
                   logout();
                   navigate("/login");
                 }}
-                className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded"
+                className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-full shadow-sm hover:shadow transition-all duration-200"
               >
                 Logout
               </button>
             </div>
           ) : (
             <div className="space-x-4">
-              <Link to="/login" className="hover:underline">Login</Link>
-              <Link to="/register" className="hover:underline">Register</Link>
+              <Link to="/login" className="bg-indigo-600 bg-opacity-40 px-4 py-1 rounded-full hover:bg-opacity-60 transition-all duration-200">Login</Link>
+              <Link to="/register" className="bg-white text-indigo-700 px-4 py-1 rounded-full shadow-sm hover:shadow-md transition-all duration-200">Register</Link>
             </div>
           )}
         </div>
