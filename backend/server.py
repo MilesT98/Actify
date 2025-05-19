@@ -418,6 +418,16 @@ async def create_interest(interest: Interest, current_user: dict = Depends(get_c
     return interest
 
 # Group routes
+@api_router.get("/groups/user", response_model=List[Dict[str, Any]])
+async def get_user_groups(current_user: dict = Depends(get_current_user)):
+    groups = await db.groups.find({"members": current_user["id"]}).to_list(100)
+    return groups
+
+@api_router.get("/groups/public", response_model=List[Dict[str, Any]])
+async def get_public_groups(current_user: dict = Depends(get_current_user)):
+    public_groups = await db.groups.find({"is_private": False}).to_list(100)
+    return public_groups
+
 @api_router.post("/groups", response_model=Group)
 async def create_group(
     group: GroupCreate, 
