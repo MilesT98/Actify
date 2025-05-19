@@ -834,26 +834,39 @@ const Profile = () => {
     success: false,
     error: ""
   });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
+      if (!user?.userId) {
+        setIsLoading(false);
+        setError("User ID not found. Please log in again.");
+        return;
+      }
+
       try {
         const response = await axios.get(`${API}/users/me`);
-        setUserData(response.data);
-        setFormData({
-          bio: response.data.bio || "",
-          profilePhoto: null,
-          interests: response.data.interests || []
-        });
+        
+        if (response.data) {
+          setUserData(response.data);
+          setFormData({
+            bio: response.data.bio || "",
+            profilePhoto: null,
+            interests: response.data.interests || []
+          });
+        } else {
+          setError("User data not found");
+        }
       } catch (err) {
         console.error("Error fetching user profile:", err);
+        setError(`Error loading profile: ${err.message || "Unknown error"}`);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserData();
-  }, []);
+  }, [user?.userId]);
 
   const handleChange = (e) => {
     if (e.target.name === "profilePhoto") {
