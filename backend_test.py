@@ -6,7 +6,7 @@ from datetime import datetime
 
 class ActivityChallengeAPITest(unittest.TestCase):
     def setUp(self):
-        self.base_url = "https://4d5ee6f8-8f9d-4296-b4a3-e221abe214ab.preview.emergentagent.com/api"
+        self.base_url = "https://e1ffcce3-e7c4-41ff-9685-adbbd39fef6d.preview.emergentagent.com/api"
         self.token = None
         self.user_id = None
         self.username = None
