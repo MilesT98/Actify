@@ -1268,6 +1268,60 @@ async def create_notification(user_id: str, title: str, message: str, type: str,
     await db.notifications.insert_one(notification)
     return notification
 
+# Challenge routes
+@api_router.get("/challenges/active", response_model=List[Dict[str, Any]])
+async def get_active_challenges(current_user: dict = Depends(get_current_user)):
+    # Get user's groups
+    user_groups = await db.groups.find({"members": current_user["id"]}).to_list(100)
+    group_ids = [group["id"] for group in user_groups]
+    
+    # Get today's date
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Query for active challenges
+    active_challenges = await db.activities.find({
+        "group_id": {"$in": group_ids},
+        "selected_for_date": {"$gte": today},
+        "is_completed": False
+    }).to_list(100)
+    
+    # Mark today's challenge
+    for challenge in active_challenges:
+        challenge_date = challenge["selected_for_date"].replace(hour=0, minute=0, second=0, microsecond=0)
+        challenge["is_today"] = challenge_date == today
+    
+    return active_challenges
+
+@api_router.get("/challenges/featured", response_model=List[Dict[str, Any]])
+async def get_featured_challenges(current_user: dict = Depends(get_current_user)):
+    # Get some random activities to show as featured
+    featured = await db.activities.find({}).limit(5).to_list(5)
+    return featured
+
+@api_router.get("/challenges/history", response_model=List[Dict[str, Any]])
+async def get_challenge_history(current_user: dict = Depends(get_current_user)):
+    # Get user's groups
+    user_groups = await db.groups.find({"members": current_user["id"]}).to_list(100)
+    group_ids = [group["id"] for group in user_groups]
+    
+    # Get past activities
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    past_challenges = await db.activities.find({
+        "group_id": {"$in": group_ids},
+        "selected_for_date": {"$lt": today}
+    }).sort("selected_for_date", -1).limit(20).to_list(20)
+    
+    # Get submissions for each challenge
+    for challenge in past_challenges:
+        submission = await db.submissions.find_one({
+            "activity_id": challenge["id"],
+            "user_id": current_user["id"]
+        })
+        challenge["completed"] = submission is not None
+        challenge["date"] = challenge["selected_for_date"]
+    
+    return past_challenges
+
 # Test route
 @api_router.get("/")
 async def root():
