@@ -598,45 +598,45 @@ const Home = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold mb-4">How ACTIFY Works</h2>
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">1</div>
+          <h2 className="text-2xl font-bold mb-6 text-center">How ACTIFY Works</h2>
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4 bg-gradient-to-r from-indigo-50 to-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <div className="bg-indigo-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md">1</div>
               <div>
-                <h3 className="font-semibold">Join or Create a Group</h3>
-                <p className="text-gray-600">Form a group with friends (up to 15 people)</p>
+                <h3 className="font-semibold text-lg text-indigo-800">Join or Create a Group</h3>
+                <p className="text-gray-600 mt-1">Form a group with friends (up to 15 people)</p>
               </div>
             </div>
             
-            <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">2</div>
+            <div className="flex items-start space-x-4 bg-gradient-to-r from-indigo-50 to-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <div className="bg-indigo-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md">2</div>
               <div>
-                <h3 className="font-semibold">Submit Weekly Activities</h3>
-                <p className="text-gray-600">Each member suggests one activity per week</p>
+                <h3 className="font-semibold text-lg text-indigo-800">Submit Weekly Activities</h3>
+                <p className="text-gray-600 mt-1">Each member suggests one activity per week</p>
               </div>
             </div>
             
-            <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">3</div>
+            <div className="flex items-start space-x-4 bg-gradient-to-r from-indigo-50 to-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <div className="bg-indigo-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md">3</div>
               <div>
-                <h3 className="font-semibold">Complete Daily Challenges</h3>
-                <p className="text-gray-600">A random activity is selected each day</p>
+                <h3 className="font-semibold text-lg text-indigo-800">Complete Daily Challenges</h3>
+                <p className="text-gray-600 mt-1">A random activity is selected each day</p>
               </div>
             </div>
             
-            <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">4</div>
+            <div className="flex items-start space-x-4 bg-gradient-to-r from-indigo-50 to-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <div className="bg-indigo-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md">4</div>
               <div>
-                <h3 className="font-semibold">Submit Photo Evidence</h3>
-                <p className="text-gray-600">Take a photo to prove you completed the activity</p>
+                <h3 className="font-semibold text-lg text-indigo-800">Submit Photo Evidence</h3>
+                <p className="text-gray-600 mt-1">Take a photo to prove you completed the activity</p>
               </div>
             </div>
             
-            <div className="flex items-start space-x-3">
-              <div className="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">5</div>
+            <div className="flex items-start space-x-4 bg-gradient-to-r from-indigo-50 to-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+              <div className="bg-indigo-600 text-white font-bold rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md">5</div>
               <div>
-                <h3 className="font-semibold">Vote & Earn Points</h3>
-                <p className="text-gray-600">Vote on submissions and climb the leaderboard</p>
+                <h3 className="font-semibold text-lg text-indigo-800">Vote & Earn Points</h3>
+                <p className="text-gray-600 mt-1">Vote on submissions and climb the leaderboard</p>
               </div>
             </div>
           </div>
