@@ -1239,7 +1239,7 @@ const Profile = () => {
                     />
                   ) : userData?.profile_photo_url ? (
                     <img
-                      src={userData.profile_photo_url}
+                      src={userData?.profile_photo_url}
                       alt={userData?.username || 'User'}
                       className="w-full h-full object-cover"
                     />
