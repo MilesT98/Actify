@@ -948,14 +948,14 @@ const Profile = () => {
             <div>
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                  {userData.profile_photo_url ? (
+                  {userData?.profile_photo_url ? (
                     <img
                       src={userData.profile_photo_url}
                       alt={userData.username}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="text-4xl text-gray-400">{userData.username.charAt(0).toUpperCase()}</div>
+                    <div className="text-4xl text-gray-400">{userData?.username?.charAt(0).toUpperCase() || '?'}</div>
                   )}
                 </div>
                 
