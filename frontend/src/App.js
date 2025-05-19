@@ -50,9 +50,6 @@ const AuthProvider = ({ children }) => {
       username,
     });
   };
-      username,
-    });
-  };
 
   const logout = () => {
     localStorage.removeItem("token");
