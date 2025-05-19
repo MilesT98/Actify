@@ -42,10 +42,14 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem("token", token);
     localStorage.setItem("userId", userId);
     localStorage.setItem("username", username);
+    console.log("Saved to localStorage:", { token, userId, username });
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     setUser({
       token,
       userId,
+      username,
+    });
+  };
       username,
     });
   };
