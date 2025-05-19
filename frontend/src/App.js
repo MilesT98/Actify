@@ -960,8 +960,8 @@ const Profile = () => {
                 </div>
                 
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-center md:text-left">{userData.username}</h2>
-                  <p className="text-gray-600 mb-4 text-center md:text-left">{userData.email}</p>
+                  <h2 className="text-2xl font-bold text-center md:text-left">{userData?.username || 'User'}</h2>
+                  <p className="text-gray-600 mb-4 text-center md:text-left">{userData?.email || 'No email provided'}</p>
                   
                   <div className="bg-gray-50 p-4 rounded mb-4">
                     <h3 className="font-semibold mb-2">Bio</h3>
