@@ -988,7 +988,7 @@ const Profile = () => {
                   <div>
                     <h3 className="font-semibold mb-2">Member Since</h3>
                     <p className="text-gray-700">
-                      {new Date(userData.created_at).toLocaleDateString()}
+                      {userData?.created_at ? new Date(userData.created_at).toLocaleDateString() : 'Unknown date'}
                     </p>
                   </div>
                 </div>
