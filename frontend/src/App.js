@@ -812,18 +812,6 @@ const Home = () => {
               </button>
             </div>
           )}
-          </div>
-          
-          {(!userData?.groups || userData.groups.length === 0) && (
-            <div className="mt-8 text-center">
-              <button
-                onClick={() => navigate("/groups/create")}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-              >
-                Get Started Now
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
