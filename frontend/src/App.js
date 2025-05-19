@@ -287,10 +287,55 @@ const Home = () => {
           <p>{error}</p>
         </div>
         
-        {/* Continue with the main home content */}
+        {/* Continue rendering the normal home page content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Hero Section */}
-          <div className="flex flex-col justify-center">{/* Hero content */}
+          <div className="flex flex-col justify-center">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-indigo-900 mb-6">
+              Daily Challenges, <br/>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Real Connections</span>
+            </h1>
+            
+            <p className="text-lg text-gray-700 mb-8">
+              ACTIFY brings friends together through daily challenges and activities. Compete, share, and build lasting connections through shared experiences.
+            </p>
+            
+            {!user && (
+              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-12">
+                <button
+                  onClick={() => navigate("/register")}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                >
+                  Join Now
+                </button>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="bg-white border-2 border-indigo-600 text-indigo-600 font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg hover:bg-indigo-50 transition-all duration-300"
+                >
+                  Log In
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Right Column - Featured Image */}
+          <div className="relative flex justify-center items-center">
+            <div className="relative w-full h-80 md:h-96 lg:h-[32rem] rounded-2xl overflow-hidden shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-600/30 z-10"></div>
+              <img
+                src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1784&q=80"
+                alt="People enjoying activities together"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        </div>
+        
+        {/* ActifyFeatures component */}
+        <ActifyFeatures />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-12 px-4">
