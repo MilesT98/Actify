@@ -1322,6 +1322,41 @@ async def get_challenge_history(current_user: dict = Depends(get_current_user)):
     
     return past_challenges
 
+# Leaderboard routes
+@api_router.get("/leaderboard/global", response_model=List[Dict[str, Any]])
+async def get_global_leaderboard(current_user: dict = Depends(get_current_user)):
+    # Get all users
+    users = await db.users.find().to_list(100)
+    
+    # Create leaderboard
+    leaderboard = []
+    for user in users:
+        entry = {
+            "id": user["id"],
+            "username": user["username"],
+            "profile_photo_url": user.get("profile_photo_url"),
+            "streak": user.get("streak", 0),
+            "total_points": user.get("total_points", 0),
+            "completed_challenges": user.get("completed_challenges", 0),
+            "rank": 0  # Will be set after sorting
+        }
+        leaderboard.append(entry)
+    
+    # Sort by points
+    leaderboard.sort(key=lambda x: x["total_points"], reverse=True)
+    
+    # Assign ranks
+    for i, entry in enumerate(leaderboard):
+        entry["rank"] = i + 1
+    
+    return leaderboard
+
+@api_router.get("/leaderboard/friends", response_model=List[Dict[str, Any]])
+async def get_friends_leaderboard(current_user: dict = Depends(get_current_user)):
+    # For demo purposes, return the same as global leaderboard
+    # In a real app, you would filter by friends
+    return await get_global_leaderboard(current_user)
+
 # Test route
 @api_router.get("/")
 async def root():
