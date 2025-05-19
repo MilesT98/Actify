@@ -737,62 +737,81 @@ const Home = () => {
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-lg shadow-lg p-8 border border-indigo-100">
-          <h2 className="text-3xl font-bold mb-8 text-center text-indigo-800 relative">
+        <div className="bg-gradient-to-br from-indigo-100 via-purple-50 to-blue-50 rounded-xl shadow-xl p-10 border border-indigo-200 relative overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-indigo-300 to-transparent rounded-full opacity-20 transform translate-x-20 -translate-y-20"></div>
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-purple-300 to-transparent rounded-full opacity-20 transform -translate-x-20 translate-y-20"></div>
+          
+          <h2 className="text-3xl font-extrabold mb-10 text-center text-indigo-900 relative">
             <span className="relative inline-block">
               How ACTIFY Works
-              <span className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-indigo-600 rounded"></span>
+              <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
             </span>
           </h2>
           
-          <div className="grid md:grid-cols-3 gap-5">
-            {/* First Row */}
-            <div className="bg-white p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center flex-shrink-0 shadow-md mb-3">1</div>
-              <h3 className="font-bold text-lg text-indigo-800">Join or Create a Group</h3>
-              <p className="text-gray-600 mt-2">Form a group with friends (up to 15 people)</p>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mt-3 text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="grid md:grid-cols-5 gap-4">
+            {/* Step 1 */}
+            <div className="md:col-span-1 bg-white p-6 rounded-xl shadow hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center h-full">
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg mb-4">1</div>
+              <h3 className="font-bold text-lg text-indigo-900 mb-2">Join or Create a Group</h3>
+              <p className="text-gray-600 mt-1 mb-4">Form a group with friends (up to 15 people)</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mt-auto text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
             
-            <div className="bg-white p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center flex-shrink-0 shadow-md mb-3">2</div>
-              <h3 className="font-bold text-lg text-indigo-800">Submit Weekly Activities</h3>
-              <p className="text-gray-600 mt-2">Each member suggests one activity per week</p>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mt-3 text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Step 2 */}
+            <div className="md:col-span-1 bg-white p-6 rounded-xl shadow hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center h-full">
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg mb-4">2</div>
+              <h3 className="font-bold text-lg text-indigo-900 mb-2">Submit Weekly Activities</h3>
+              <p className="text-gray-600 mt-1 mb-4">Each member suggests one activity per week</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mt-auto text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
             </div>
             
-            <div className="bg-white p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center flex-shrink-0 shadow-md mb-3">3</div>
-              <h3 className="font-bold text-lg text-indigo-800">Complete Daily Challenges</h3>
-              <p className="text-gray-600 mt-2">A random activity is selected each day</p>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mt-3 text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Step 3 */}
+            <div className="md:col-span-1 bg-white p-6 rounded-xl shadow hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center h-full">
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg mb-4">3</div>
+              <h3 className="font-bold text-lg text-indigo-900 mb-2">Complete Daily Challenges</h3>
+              <p className="text-gray-600 mt-1 mb-4">A random activity is selected each day</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mt-auto text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905A3.61 3.61 0 018.5 7.5" />
               </svg>
             </div>
             
-            {/* Second Row - Centered */}
-            <div className="md:col-start-1 md:col-end-2 bg-white p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center flex-shrink-0 shadow-md mb-3">4</div>
-              <h3 className="font-bold text-lg text-indigo-800">Submit Photo Evidence</h3>
-              <p className="text-gray-600 mt-2">Take a photo to prove you completed the activity</p>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mt-3 text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Step 4 */}
+            <div className="md:col-span-1 bg-white p-6 rounded-xl shadow hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center h-full">
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg mb-4">4</div>
+              <h3 className="font-bold text-lg text-indigo-900 mb-2">Submit Photo Evidence</h3>
+              <p className="text-gray-600 mt-1 mb-4">Take a photo to prove you completed the activity</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mt-auto text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             
-            <div className="md:col-start-2 md:col-end-4 bg-white p-5 rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center">
-              <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold rounded-full w-14 h-14 flex items-center justify-center flex-shrink-0 shadow-md mb-3">5</div>
-              <h3 className="font-bold text-lg text-indigo-800">Vote & Earn Points</h3>
-              <p className="text-gray-600 mt-2">Vote on submissions and climb the leaderboard</p>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mt-3 text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Step 5 */}
+            <div className="md:col-span-1 bg-white p-6 rounded-xl shadow hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-t-4 border-indigo-600 flex flex-col items-center text-center h-full">
+              <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white font-bold rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-lg mb-4">5</div>
+              <h3 className="font-bold text-lg text-indigo-900 mb-2">Vote & Earn Points</h3>
+              <p className="text-gray-600 mt-1 mb-4">Vote on submissions and climb the leaderboard</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mt-auto text-indigo-500 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
             </div>
+          </div>
+          
+          {(!userData?.groups || userData.groups.length === 0) && (
+            <div className="mt-10 text-center">
+              <button
+                onClick={() => navigate("/groups/create")}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
+              >
+                Get Started Now →
+              </button>
+            </div>
+          )}
           </div>
           
           {(!userData?.groups || userData.groups.length === 0) && (
