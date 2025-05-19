@@ -7,10 +7,10 @@ import { ActifyFeatures } from "./AppFeatures";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Auth Context
-import React from "react";
-const AuthContext = React.createContext(null);
+// Create an authentication context
+const AuthContext = React.createContext();
 
+// Authentication hook
 const useAuth = () => {
   return React.useContext(AuthContext);
 };
@@ -60,7 +60,7 @@ const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const value = {
+  const authContextValue = {
     user,
     login,
     logout,
@@ -68,557 +68,148 @@ const AuthProvider = ({ children }) => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div>Loading...</div>;
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={authContextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Private Route Component
+// Route guard for authenticated routes
 const PrivateRoute = ({ element }) => {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? element : <Navigate to="/login" />;
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return element;
 };
 
-// Components
-const SafeImage = ({ src, alt, className, fallbackClassName, children }) => {
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
+// Utils
+const formatDate = (dateString) => {
+  const options = { year: "numeric", month: "long", day: "numeric" };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+};
+
+// Custom Hooks
+const useFormInput = (initialValue) => {
+  const [value, setValue] = useState(initialValue);
   
-  // Attempt to load image from URL and potentially add CORS parameters
-  const fullImageUrl = src && !src.includes('?') ? `${src}?${new Date().getTime()}` : src;
-  
-  const handleImageError = () => {
-    console.error(`Failed to load image: ${src}`);
-    setImgError(true);
+  const handleChange = (e) => {
+    setValue(e.target.value);
   };
   
-  const handleImageLoad = () => {
-    setImgLoaded(true);
+  return {
+    value,
+    onChange: handleChange,
   };
-  
+};
+
+// Reusable Components
+const Button = ({ onClick, disabled, children, className }) => {
   return (
-    <>
-      {src && !imgError ? (
-        <img
-          src={fullImageUrl}
-          alt={alt || "Image"}
-          className={className}
-          style={{ display: imgLoaded ? "block" : "none" }}
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-          crossOrigin="anonymous"
-        />
-      ) : (
-        <div className={fallbackClassName || className}>
-          {children || (
-            <div className="flex items-center justify-center h-full w-full bg-gray-200 text-gray-400">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-1/3 w-1/3" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                />
-              </svg>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {src && !imgLoaded && !imgError && (
-        <div className={`${className} absolute inset-0 flex items-center justify-center bg-gray-100`}>
-          <div className="spinner"></div>
-        </div>
-      )}
-    </>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${
+        disabled ? "opacity-50 cursor-not-allowed" : ""
+      } ${className || ""}`}
+    >
+      {children}
+    </button>
   );
 };
 
-const NotificationBell = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const notificationRef = useRef(null);
-
-  // Close notifications when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Fetch notifications
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (showNotifications && notifications.length === 0) {
-        setIsLoading(true);
-        try {
-          const response = await axios.get(`${API}/notifications`);
-          setNotifications(response.data);
-        } catch (error) {
-          console.error("Error fetching notifications:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchNotifications();
-  }, [showNotifications]);
-
-  const handleNotificationClick = async (notificationId) => {
-    try {
-      await axios.post(`${API}/notifications/mark-read/${notificationId}`);
-      setNotifications(notifications.map(notification => 
-        notification.id === notificationId 
-          ? { ...notification, read: true } 
-          : notification
-      ));
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await axios.post(`${API}/notifications/mark-all-read`);
-      setNotifications(notifications.map(notification => ({ ...notification, read: true })));
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-    }
-  };
-
-  const unreadCount = notifications.filter(notification => !notification.read).length;
-
+const FormInput = ({ label, type = "text", ...props }) => {
   return (
-    <div className="relative" ref={notificationRef}>
-      <button
-        onClick={() => setShowNotifications(!showNotifications)}
-        className="relative p-2 text-white hover:bg-indigo-500 rounded-full focus:outline-none"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-            {unreadCount}
-          </span>
-        )}
-      </button>
-      
-      {showNotifications && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-10">
-          <div className="py-2 px-3 bg-gray-100 flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
-            {notifications.length > 0 && (
-              <button
-                onClick={handleMarkAllRead}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
-          <div className="max-h-96 overflow-y-auto">
-            {isLoading ? (
-              <div className="py-4 text-center text-gray-500">
-                <div className="spinner mx-auto"></div>
-                <p className="mt-1">Loading...</p>
-              </div>
-            ) : notifications.length > 0 ? (
-              <div>
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 border-b hover:bg-gray-50 ${notification.read ? 'bg-white' : 'bg-indigo-50'}`}
-                    onClick={() => handleNotificationClick(notification.id)}
-                  >
-                    <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(notification.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center text-gray-500">
-                <p>No notifications yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+    <div className="mb-4">
+      <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor={props.id}>
+        {label}
+      </label>
+      <input
+        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        type={type}
+        {...props}
+      />
     </div>
   );
 };
 
-const Navbar = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
+const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  
   return (
-    <nav className="bg-gradient-to-r from-indigo-700 to-purple-700 text-white p-4 shadow-md">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold flex items-center">
-          <span className="bg-white text-indigo-600 rounded-lg p-1 mr-2 shadow-sm">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </span>
-          ACTIFY
-        </Link>
-        <div className="space-x-4">
-          {user ? (
-            <div className="flex items-center space-x-4">
-              <NotificationBell />
-              <Link to="/profile" className="hover:text-indigo-200 transition-colors duration-200 flex items-center bg-indigo-600 bg-opacity-40 px-3 py-1 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span>{user.username}</span>
-              </Link>
-              <button 
-                onClick={() => {
-                  logout();
-                  navigate("/login");
-                }}
-                className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-full shadow-sm hover:shadow transition-all duration-200"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="space-x-4">
-              <Link to="/login" className="bg-indigo-600 bg-opacity-40 px-4 py-1 rounded-full hover:bg-opacity-60 transition-all duration-200">Login</Link>
-              <Link to="/register" className="bg-white text-indigo-700 px-4 py-1 rounded-full shadow-sm hover:shadow-md transition-all duration-200">Register</Link>
-            </div>
-          )}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4">{title}</h2>
+        <p className="mb-6">{message}</p>
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={onCancel}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Confirm
+          </button>
         </div>
       </div>
-    </nav>
-  );
-};
-
-// Auth Pages
-const Register = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    bio: ""
-  });
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  if (isAuthenticated) {
-    return <Navigate to="/" />;
-  }
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    
-    try {
-      await axios.post(`${API}/auth/register`, formData);
-      navigate("/login", { state: { message: "Registration successful. Please log in." } });
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError(err.response?.data?.detail || "Registration failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto max-w-md py-12">
-      <h1 className="text-3xl font-bold mb-6 text-center">Join ACTIFY</h1>
-      
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-lg px-8 pt-6 pb-8 mb-4 border border-gray-100">
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-            Username
-          </label>
-          <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="username"
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-            Email
-          </label>
-          <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="email"
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-            Password
-          </label>
-          <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="password"
-            type="password"
-            name="password"
-            placeholder="********"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="bio">
-            Bio (Optional)
-          </label>
-          <textarea
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="bio"
-            name="bio"
-            placeholder="Tell us about yourself"
-            value={formData.bio}
-            onChange={handleChange}
-          />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <button
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full shadow-md hover:shadow-lg transition-all duration-200"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating Account...
-              </span>
-            ) : (
-              "Sign Up"
-            )}
-          </button>
-        </div>
-        
-        <div className="text-center mt-4">
-          Already have an account? <Link to="/login" className="text-indigo-600 hover:underline">Log In</Link>
-        </div>
-      </form>
     </div>
   );
 };
 
-const Login = () => {
-  const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
-  const [formData, setFormData] = useState({
-    username: "",
-    password: ""
-  });
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    // Check if there's a message from another page (like register)
-    const state = window.history.state;
-    if (state && state.message) {
-      setMessage(state.message);
-    }
-  }, []);
-
-  if (isAuthenticated) {
-    return <Navigate to="/" />;
-  }
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+const Avatar = ({ src, alt, size = "md" }) => {
+  const sizeClasses = {
+    sm: "w-8 h-8",
+    md: "w-12 h-12",
+    lg: "w-16 h-16",
+    xl: "w-24 h-24",
   };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    
-    try {
-      const response = await axios.post(
-        `${API}/auth/token`,
-        new URLSearchParams({
-          username: formData.username,
-          password: formData.password
-        }),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        }
-      );
-      
-      login(
-        response.data.access_token,
-        response.data.user_id,
-        response.data.username
-      );
-      
-      navigate("/");
-    } catch (err) {
-      console.error("Login error:", err);
-      setError(err.response?.data?.detail || "Login failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  
   return (
-    <div className="container mx-auto max-w-md py-12">
-      <h1 className="text-3xl font-bold mb-6 text-center">Login to ACTIFY</h1>
-      
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
+    <div className={`${sizeClasses[size]} overflow-hidden rounded-full bg-gray-200`}>
+      {src ? (
+        <img src={src} alt={alt} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-gray-500 font-bold">
+          {alt ? alt.charAt(0).toUpperCase() : "U"}
         </div>
       )}
-      
-      {message && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded shadow-sm">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm">{message}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-lg px-8 pt-6 pb-8 mb-4 border border-gray-100">
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-            Username
-          </label>
-          <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="username"
-            type="text"
-            name="username"
-            placeholder="Username"
-            value={formData.username}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-            Password
-          </label>
-          <input
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="password"
-            type="password"
-            name="password"
-            placeholder="********"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <button
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full shadow-md hover:shadow-lg transition-all duration-200"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Logging In...
-              </span>
-            ) : (
-              "Sign In"
-            )}
+    </div>
+  );
+};
+
+const Loader = () => (
+  <div className="flex justify-center items-center p-4">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+  </div>
+);
+
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">{title}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
-        
-        <div className="text-center mt-4">
-          Don't have an account? <Link to="/register" className="text-indigo-600 hover:underline">Register</Link>
-        </div>
-      </form>
+        {children}
+      </div>
     </div>
   );
 };
@@ -628,24 +219,37 @@ const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
+  const [topUsers, setTopUsers] = useState([]);
+  const [featuredChallenges, setFeaturedChallenges] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchHomeData = async () => {
       try {
-        const response = await axios.get(`${API}/users/me`);
-        setUserData(response.data);
+        // If user is logged in, fetch their data
+        if (user) {
+          const userResponse = await axios.get(`${API}/users/me`);
+          setUserData(userResponse.data);
+        }
+        
+        // Fetch top users
+        const topUsersResponse = await axios.get(`${API}/users/top`);
+        setTopUsers(topUsersResponse.data || []);
+        
+        // Fetch featured challenges
+        const challengesResponse = await axios.get(`${API}/challenges/featured`);
+        setFeaturedChallenges(challengesResponse.data || []);
       } catch (err) {
-        console.error("Error fetching user data:", err);
-        setError(err.response?.data?.detail || "Failed to load user data");
+        console.error("Error fetching home data:", err);
+        setError("Failed to load home data. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchUserData();
-  }, []);
+    
+    fetchHomeData();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -676,260 +280,95 @@ const Home = () => {
     );
   }
 
-  if (!userData) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-center font-medium">User profile data could not be loaded.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Reload Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-center font-medium">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-center font-medium">User profile data could not be loaded.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Reload Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-center font-medium">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-center font-medium">User profile data could not be loaded.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Reload Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-center font-medium">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-center font-medium">User profile data could not be loaded.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Reload Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-center font-medium">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!userData) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-center font-medium">User profile data could not be loaded.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Reload Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-white">
-            <h2 className="text-2xl font-bold">Welcome to ACTIFY, {user.username}!</h2>
-          </div>
-          <div className="p-6">
+        {/* Left Column - Hero Section */}
+        <div className="flex flex-col justify-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-indigo-900 mb-6">
+            Daily Challenges, <br/>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Real Connections</span>
+          </h1>
           
-          {userData?.groups && userData.groups.length > 0 ? (
-            <div>
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">Your Groups</h3>
-              <div className="space-y-3">
-                {userData.groups.map((group) => (
-                  <div key={group.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-white transition-all duration-200 hover:shadow-md transform hover:-translate-y-1">
-                    <Link 
-                      to={`/groups/${group.id}`}
-                      className="text-lg font-medium text-indigo-600 hover:text-indigo-800 flex justify-between items-center"
-                    >
-                      <span>{group.name}</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-8 flex justify-center gap-4">
-                <button
-                  onClick={() => navigate("/groups/create")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Create New Group
-                </button>
-                <button
-                  onClick={() => navigate("/groups/join")}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full shadow-md hover:shadow-lg transition-all duration-200 flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
-                  </svg>
-                  Join a Group
-                </button>
-              </div>
+          <p className="text-lg text-gray-700 mb-8">
+            ACTIFY brings friends together through daily challenges and activities. Compete, share, and build lasting connections through shared experiences.
+          </p>
+          
+          {!user && (
+            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-12">
+              <button
+                onClick={() => navigate("/register")}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+              >
+                Join Now
+              </button>
+              <button
+                onClick={() => navigate("/login")}
+                className="bg-white border-2 border-indigo-600 text-indigo-600 font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg hover:bg-indigo-50 transition-all duration-300"
+              >
+                Log In
+              </button>
             </div>
-          ) : (
-            <div className="text-center py-8 bg-gradient-to-b from-gray-50 to-white rounded-lg border-2 border-dashed border-gray-300">
-              <div className="inline-block p-6 bg-indigo-100 text-indigo-600 rounded-full mb-4 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <p className="text-xl font-semibold mb-2">You're not part of any groups yet</p>
-              <p className="text-gray-600 mb-8 px-4">Create a group or join an existing one to get started with challenges</p>
-              <div className="flex flex-col sm:flex-row justify-center gap-4 px-4">
+          )}
+          
+          {user && userData && (
+            <div className="mb-12">
+              <div className="bg-white border border-indigo-100 rounded-lg p-4 shadow-md hover:shadow-lg transition-all duration-200 flex items-center">
+                <Avatar src={userData.profile_photo_url} alt={userData.username} size="md" />
+                <div className="ml-4">
+                  <p className="font-bold text-indigo-900">Welcome back, {userData.username}!</p>
+                  <p className="text-sm text-gray-600">Current streak: {userData.streak} days</p>
+                </div>
                 <button
-                  onClick={() => navigate("/groups/create")}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center"
+                  onClick={() => navigate("/challenges/today")}
+                  className="ml-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Create a Group
-                </button>
-                <button
-                  onClick={() => navigate("/groups/join")}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
-                  </svg>
-                  Join a Group
+                  Today's Challenge
                 </button>
               </div>
             </div>
           )}
+          
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4 bg-white rounded-lg shadow-md p-6 border border-indigo-100">
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-indigo-600">100K+</div>
+              <div className="text-gray-600 text-sm md:text-base">Active Users</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-indigo-600">2.5M+</div>
+              <div className="text-gray-600 text-sm md:text-base">Challenges Completed</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-indigo-600">15K+</div>
+              <div className="text-gray-600 text-sm md:text-base">Groups Created</div>
+            </div>
           </div>
         </div>
         
+        {/* Right Column - Featured Image */}
+        <div className="relative flex justify-center items-center">
+          <div className="relative w-full h-80 md:h-96 lg:h-[32rem] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-600/30 z-10"></div>
+            <img
+              src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1784&q=80"
+              alt="People enjoying activities together"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg z-20">
+              <h3 className="font-bold text-indigo-900">Trending Challenge</h3>
+              <p className="text-gray-700">"Strike a yoga pose in the most unexpected place!"</p>
+            </div>
+          </div>
+          
+          {/* Floating elements */}
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-yellow-400 rounded-full opacity-20"></div>
+          <div className="absolute -bottom-14 -left-14 w-40 h-40 bg-indigo-600 rounded-full opacity-10"></div>
+        </div>
+      </div>
+      
+      {/* How it works section */}
+      <div className="mt-20">
         <div className="bg-gradient-to-br from-indigo-100 via-purple-50 to-blue-50 rounded-xl shadow-xl p-10 border border-indigo-200 relative overflow-hidden">
           {/* Decorative background elements */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-indigo-300 to-transparent rounded-full opacity-20 transform translate-x-20 -translate-y-20"></div>
@@ -995,1091 +434,21 @@ const Home = () => {
             </div>
           </div>
           
-          <div>
-            {(!userData?.groups || userData.groups.length === 0) && (
-              <div className="mt-10 text-center">
-                <button
-                  onClick={() => navigate("/groups/create")}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-                >
-                  Get Started Now →
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* New detailed features section */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-xl p-10 border border-indigo-100 mt-10">
-            <h2 className="text-3xl font-extrabold mb-8 text-center text-indigo-900 relative">
-              <span className="relative inline-block">
-                The ACTIFY Experience
-                <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
-              </span>
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Feature 1: Signup & Profile */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Signup & Profile Creation</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create an account with email or social login
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Set up profile with bio and picture
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Choose privacy settings (private or public)
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 2: Daily Challenge */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">The Daily Challenge</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Random daily notification with a new challenge
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    2-hour window to complete and submit
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Variety of challenge categories
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 3: Submission Process */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Submission Process</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Submit photo or video evidence
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    BeReal-like selfie mode for authenticity
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Add caption and location tags
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 4: Social Engagement */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Social Engagement</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    React with emojis and comments
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn streaks and unlock badges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Track performance on leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 5: Groups & Challenges */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Groups & Challenges</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create or join private groups
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Compete with friends or random users
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Weekly/monthly leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 6: Rewards & Gamification */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Rewards & Gamification</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn XP points for completing challenges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Unlock new activity categories
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Potential monetary prizes for winners
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
+          {(!userData?.groups || userData?.groups.length === 0) && (
             <div className="mt-10 text-center">
               <button
-                onClick={() => navigate("/register")}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
+                onClick={() => navigate("/groups/create")}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
               >
-                Join ACTIFY Today →
+                Get Started Now →
               </button>
             </div>
-          </div>
-
-          {/* New detailed features section */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-xl p-10 border border-indigo-100 mt-10">
-            <h2 className="text-3xl font-extrabold mb-8 text-center text-indigo-900 relative">
-              <span className="relative inline-block">
-                The ACTIFY Experience
-                <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
-              </span>
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Feature 1: Signup & Profile */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Signup & Profile Creation</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create an account with email or social login
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Set up profile with bio and picture
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Choose privacy settings (private or public)
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 2: Daily Challenge */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">The Daily Challenge</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Random daily notification with a new challenge
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    2-hour window to complete and submit
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Variety of challenge categories
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 3: Submission Process */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Submission Process</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Submit photo or video evidence
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    BeReal-like selfie mode for authenticity
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Add caption and location tags
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 4: Social Engagement */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Social Engagement</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    React with emojis and comments
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn streaks and unlock badges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Track performance on leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 5: Groups & Challenges */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Groups & Challenges</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create or join private groups
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Compete with friends or random users
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Weekly/monthly leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 6: Rewards & Gamification */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Rewards & Gamification</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn XP points for completing challenges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Unlock new activity categories
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Potential monetary prizes for winners
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-10 text-center">
-              <button
-                onClick={() => navigate("/register")}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-              >
-                Join ACTIFY Today →
-              </button>
-            </div>
-          </div>
-          
-          {/* New detailed features section */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-xl p-10 border border-indigo-100 mt-10">
-            <h2 className="text-3xl font-extrabold mb-8 text-center text-indigo-900 relative">
-              <span className="relative inline-block">
-                The ACTIFY Experience
-                <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
-              </span>
-            </h2>
-
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Feature 1: Signup & Profile */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Signup & Profile Creation</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create an account with email or social login
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Set up profile with bio and picture
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Choose privacy settings (private or public)
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 2: Daily Challenge */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">The Daily Challenge</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Random daily notification with a new challenge
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    2-hour window to complete and submit
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Variety of challenge categories
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 3: Submission Process */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Submission Process</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Submit photo or video evidence
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    BeReal-like selfie mode for authenticity
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Add caption and location tags
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 4: Social Engagement */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Social Engagement</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    React with emojis and comments
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn streaks and unlock badges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Track performance on leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 5: Groups & Challenges */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Groups & Challenges</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Create or join private groups
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Compete with friends or random users
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Weekly/monthly leaderboards
-                  </li>
-                </ul>
-              </div>
-
-              {/* Feature 6: Rewards & Gamification */}
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-                <div className="flex items-center mb-4">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo-900">Rewards & Gamification</h3>
-                </div>
-                <ul className="ml-4 space-y-2 text-gray-700">
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Earn XP points for completing challenges
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Unlock new activity categories
-                  </li>
-                  <li className="flex items-start">
-                    <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Potential monetary prizes for winners
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-10 text-center">
-              <button
-                onClick={() => navigate("/register")}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-              >
-                Join ACTIFY Today →
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* New detailed features section */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-xl p-10 border border-indigo-100 mt-10">
-          <h2 className="text-3xl font-extrabold mb-8 text-center text-indigo-900 relative">
-            <span className="relative inline-block">
-              The ACTIFY Experience
-              <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
-            </span>
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Feature 1: Signup & Profile */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Signup & Profile Creation</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Create an account with email or social login
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Set up profile with bio and picture
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Choose privacy settings (private or public)
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 2: Daily Challenge */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">The Daily Challenge</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Random daily notification with a new challenge
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  2-hour window to complete and submit
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Variety of challenge categories
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 3: Submission Process */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Submission Process</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Submit photo or video evidence
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  BeReal-like selfie mode for authenticity
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Add caption and location tags
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 4: Social Engagement */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Social Engagement</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  React with emojis and comments
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Earn streaks and unlock badges
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Track performance on leaderboards
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 5: Groups & Challenges */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Groups & Challenges</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Create or join private groups
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Compete with friends or random users
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Weekly/monthly leaderboards
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 6: Rewards & Gamification */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Rewards & Gamification</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Earn XP points for completing challenges
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Unlock new activity categories
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Potential monetary prizes for winners
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="mt-10 text-center">
-            <button
-              onClick={() => navigate("/register")}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-            >
-              Join ACTIFY Today →
-            </button>
-          </div>
-        </div>
-        </div>
-
-        {/* New detailed features section */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-xl p-10 border border-indigo-100 mt-10">
-          <h2 className="text-3xl font-extrabold mb-8 text-center text-indigo-900 relative">
-            <span className="relative inline-block">
-              The ACTIFY Experience
-              <span className="absolute -bottom-3 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full"></span>
-            </span>
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Feature 1: Signup & Profile */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Signup & Profile Creation</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Create an account with email or social login
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Set up profile with bio and picture
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Choose privacy settings (private or public)
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 2: Daily Challenge */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">The Daily Challenge</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Random daily notification with a new challenge
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  2-hour window to complete and submit
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Variety of challenge categories
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 3: Submission Process */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Submission Process</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Submit photo or video evidence
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  BeReal-like selfie mode for authenticity
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Add caption and location tags
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 4: Social Engagement */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Social Engagement</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  React with emojis and comments
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Earn streaks and unlock badges
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Track performance on leaderboards
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 5: Groups & Challenges */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Groups & Challenges</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Create or join private groups
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Compete with friends or random users
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Weekly/monthly leaderboards
-                </li>
-              </ul>
-            </div>
-
-            {/* Feature 6: Rewards & Gamification */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center mb-4">
-                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full p-3 mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-indigo-900">Rewards & Gamification</h3>
-              </div>
-              <ul className="ml-4 space-y-2 text-gray-700">
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Earn XP points for completing challenges
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Unlock new activity categories
-                </li>
-                <li className="flex items-start">
-                  <svg className="h-5 w-5 text-indigo-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Potential monetary prizes for winners
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="mt-10 text-center">
-            <button
-              onClick={() => navigate("/register")}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-lg"
-            >
-              Join ACTIFY Today →
-            </button>
-          </div>
+          )}
         </div>
       </div>
+      
+      {/* ActifyFeatures component */}
+      <ActifyFeatures />
     </div>
   );
 };
@@ -2135,27 +504,43 @@ const Profile = () => {
   }, [user?.userId]);
 
   const handleChange = (e) => {
-    if (e.target.name === "profilePhoto") {
+    const { name, value, type, files } = e.target;
+    
+    if (type === "file" && name === "profilePhoto") {
       const file = e.target.files[0];
-      setFormData({
-        ...formData,
-        profilePhoto: file
-      });
       
-      // Create a preview URL
       if (file) {
+        setFormData({
+          ...formData,
+          profilePhoto: file
+        });
+        
+        // Create preview URL
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onload = () => {
           setPreviewUrl(reader.result);
         };
         reader.readAsDataURL(file);
-      } else {
-        setPreviewUrl(null);
       }
     } else {
       setFormData({
         ...formData,
-        [e.target.name]: e.target.value
+        [name]: value
+      });
+    }
+  };
+
+  const handleInterestChange = (e) => {
+    const interest = e.target.value;
+    if (e.target.checked) {
+      setFormData({
+        ...formData,
+        interests: [...formData.interests, interest]
+      });
+    } else {
+      setFormData({
+        ...formData,
+        interests: formData.interests.filter(item => item !== interest)
       });
     }
   };
@@ -2163,37 +548,40 @@ const Profile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUpdateStatus({ isUpdating: true, success: false, error: "" });
-    
+
     try {
-      const formDataObj = new FormData();
-      formDataObj.append("bio", formData.bio);
+      const dataToUpdate = {
+        bio: formData.bio,
+        interests: formData.interests
+      };
       
-      // Add interests as a comma-separated string
-      if (formData.interests && formData.interests.length > 0) {
-        formDataObj.append("interests", formData.interests.join(","));
-      }
+      // Update user data
+      const response = await axios.put(`${API}/users/me`, dataToUpdate);
       
+      // If there's a profile photo to upload
       if (formData.profilePhoto) {
-        formDataObj.append("profile_photo", formData.profilePhoto);
+        const formObj = new FormData();
+        formObj.append("profile_photo", formData.profilePhoto);
+        
+        // Upload photo
+        await axios.post(`${API}/users/me/photo`, formObj, {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        });
       }
       
-      const response = await axios.put(`${API}/users/profile`, formDataObj, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
+      // Fetch updated user data
+      const updatedUserResponse = await axios.get(`${API}/users/me`);
+      setUserData(updatedUserResponse.data);
+      
+      setUpdateStatus({
+        isUpdating: false,
+        success: true,
+        error: ""
       });
       
-      setUserData({
-        ...userData,
-        bio: response.data.bio,
-        profile_photo_url: response.data.profile_photo_url,
-        interests: response.data.interests || []
-      });
-      
-      setUpdateStatus({ isUpdating: false, success: true, error: "" });
       setIsEditing(false);
-      
-      // Reset preview
       setPreviewUrl(null);
     } catch (err) {
       console.error("Error updating profile:", err);
@@ -2215,564 +603,38 @@ const Profile = () => {
     );
   }
 
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">My ACTIFY Profile</h1>
-        </div>
-        
-        <div className="p-6">
-          {!isEditing ? (
-            <div>
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                  {userData?.profile_photo_url ? (
-                    <img
-                      src={userData?.profile_photo_url}
-                      alt={userData?.username || 'User'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-4xl text-gray-400">{userData?.username?.charAt(0).toUpperCase() || '?'}</div>
-                  )}
-                </div>
-                
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-center md:text-left">{userData?.username || 'User'}</h2>
-                  <p className="text-gray-600 mb-4 text-center md:text-left">{userData?.email || 'No email provided'}</p>
-                  
-                  <div className="bg-gray-50 p-4 rounded mb-4">
-                    <h3 className="font-semibold mb-2">Bio</h3>
-                    <p className="text-gray-700">
-                      {userData?.bio || "No bio provided yet."}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded mb-4">
-                    <h3 className="font-semibold mb-2">Interests</h3>
-                    {userData?.interests && userData.interests.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {userData.interests.map((interest, index) => (
-                          <span key={index} className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
-                            {interest}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-700">No interests selected yet.</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold mb-2">Member Since</h3>
-                    <p className="text-gray-700">
-                      {userData?.created_at ? new Date(userData.created_at).toLocaleDateString() : 'Unknown date'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
-                >
-                  Edit Profile
-                </button>
-              </div>
-              
-              <div className="mt-6">
-                <h3 className="text-xl font-semibold mb-3">Your Groups</h3>
-                {userData.groups && userData.groups.length > 0 ? (
-                  <div className="space-y-2">
-                    {userData.groups.map((group) => (
-                      <Link
-                        key={group.id}
-                        to={`/groups/${group.id}`}
-                        className="block border rounded p-3 hover:bg-gray-50"
-                      >
-                        {group.name}
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-600">You're not part of any groups yet.</p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4 text-center">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 mx-auto">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Profile Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : userData?.profile_photo_url ? (
-                    <img
-                      src={userData?.profile_photo_url}
-                      alt={userData?.username || 'User'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <div className="text-4xl text-gray-400">{userData?.username?.charAt(0).toUpperCase() || '?'}</div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-2">
-                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="profilePhoto">
-                    Profile Photo
-                  </label>
-                  <input
-                    type="file"
-                    id="profilePhoto"
-                    name="profilePhoto"
-                    onChange={handleChange}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="bio">
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  rows="4"
-                  placeholder="Tell us about yourself"
-                ></textarea>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Interests
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {userData.available_interests ? (
-                    userData.available_interests.map((interest, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          const isSelected = formData.interests.includes(interest);
-                          if (isSelected) {
-                            // Remove interest if already selected
-                            setFormData({
-                              ...formData,
-                              interests: formData.interests.filter(i => i !== interest)
-                            });
-                          } else {
-                            // Add interest if not selected
-                            setFormData({
-                              ...formData,
-                              interests: [...formData.interests, interest]
-                            });
-                          }
-                        }}
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                          formData.interests.includes(interest) 
-                            ? 'bg-indigo-600 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {interest}
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-sm">Loading interests...</p>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mb-4">
-                  Select your interests to better personalize your experience
-                </p>
-              </div>
-              
-              {updateStatus.error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                  {updateStatus.error}
-                </div>
-              )}
-              
-              {updateStatus.success && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                  Profile updated successfully!
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
-                  disabled={updateStatus.isUpdating}
-                >
-                  {updateStatus.isUpdating ? "Saving..." : "Save Changes"}
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setPreviewUrl(null);
-                  }}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded w-full"
-                  disabled={updateStatus.isUpdating}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CreateGroup = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: "",
-    description: ""
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    
-    try {
-      const response = await axios.post(`${API}/groups`, formData);
-      navigate(`/groups/${response.data.id}`);
-    } catch (err) {
-      console.error("Error creating group:", err);
-      setError(err.response?.data?.detail || "Failed to create group. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">Create a New ACTIFY Group</h1>
-        </div>
-        
-        <div className="p-6">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-                Group Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="My Awesome Group"
-                required
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                rows="4"
-                placeholder="Tell us about your group..."
-              ></textarea>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating..." : "Create Group"}
-              </button>
-            </div>
-          </form>
-          
-          <div className="mt-6 p-4 bg-indigo-50 rounded">
-            <h3 className="font-semibold mb-2">What happens next?</h3>
-            <p className="text-gray-700 mb-2">
-              After creating your group, you'll get a unique invite code that you can share with friends to join your group.
-            </p>
-            <p className="text-gray-700">
-              Remember, groups are limited to a maximum of 15 members.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const JoinGroup = () => {
-  const navigate = useNavigate();
-  const [inviteCode, setInviteCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    
-    if (!inviteCode) {
-      setError("Please enter an invite code");
-      setIsLoading(false);
-      return;
-    }
-    
-    try {
-      const formData = new FormData();
-      formData.append("invite_code", inviteCode);
-      
-      const response = await axios.post(`${API}/groups/join`, formData);
-      navigate(`/groups/${response.data.id}`);
-    } catch (err) {
-      console.error("Error joining group:", err);
-      setError(err.response?.data?.detail || "Failed to join group. Invalid code or other error.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">Join an ACTIFY Group</h1>
-        </div>
-        
-        <div className="p-6">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="inviteCode">
-                Invite Code
-              </label>
-              <input
-                type="text"
-                id="inviteCode"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Enter 6-character code (e.g., ABC123)"
-                maxLength="6"
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? "Joining..." : "Join Group"}
-              </button>
-            </div>
-          </form>
-          
-          <div className="mt-6 p-4 bg-indigo-50 rounded">
-            <h3 className="font-semibold mb-2">How to Join</h3>
-            <p className="text-gray-700">
-              Ask your friend for their 6-character group invite code, then enter it above to join their group.
-            </p>
-          </div>
-          
-          <div className="mt-4 text-center">
-            <p>Don't have a code?</p>
-            <button
-              onClick={() => navigate("/groups/create")}
-              className="text-indigo-600 hover:underline font-medium"
-            >
-              Create your own group
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const GroupDetail = () => {
-  const { groupId } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [group, setGroup] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [notification, setNotification] = useState("");
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [activeTab, setActiveTab] = useState("activities");
-  const [isSelectingActivity, setIsSelectingActivity] = useState(false);
-
-  useEffect(() => {
-    // Check if there's a tab preference in the location state
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
-    }
-    
-    // Check if there's a notification in the location state
-    if (location.state?.notification) {
-      setNotification(location.state.notification);
-      // Clear notification after 5 seconds
-      const timer = setTimeout(() => {
-        setNotification("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    const fetchGroupData = async () => {
-      try {
-        const response = await axios.get(`${API}/groups/${groupId}`);
-        setGroup(response.data);
-        
-        // Fetch leaderboard
-        const leaderboardResponse = await axios.get(`${API}/groups/${groupId}/leaderboard`);
-        setLeaderboard(leaderboardResponse.data);
-      } catch (err) {
-        console.error("Error fetching group:", err);
-        setError(err.response?.data?.detail || "Failed to load group data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchGroupData();
-  }, [groupId]);
-
-  const handleSelectDailyActivity = async () => {
-    setIsSelectingActivity(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append("group_id", groupId);
-      
-      const response = await axios.post(`${API}/activities/select-daily`, formData);
-      
-      // Refresh the entire group data to ensure consistency
-      const groupResponse = await axios.get(`${API}/groups/${groupId}`);
-      setGroup(groupResponse.data);
-      
-      // Show notification
-      setNotification("Today's activity has been selected successfully!");
-      
-      // Automatically switch to the submissions tab
-      setActiveTab("submissions");
-    } catch (err) {
-      console.error("Error selecting activity:", err);
-      setError(err.response?.data?.detail || "Failed to select daily activity");
-    } finally {
-      setIsSelectingActivity(false);
-    }
-  };
-
-  const copyInviteCode = () => {
-    navigator.clipboard.writeText(group.invite_code);
-    setNotification(`Invite code ${group.invite_code} copied to clipboard!`);
-    
-    // Clear the notification after 3 seconds
-    setTimeout(() => {
-      setNotification("");
-    }, 3000);
-  };
-  
-  const handlePromoteToAdmin = async (userId) => {
-    try {
-      const response = await axios.post(`${API}/groups/${groupId}/admins/${userId}/add`);
-      setNotification("User promoted to admin successfully!");
-      
-      // Refresh group data
-      const groupResponse = await axios.get(`${API}/groups/${groupId}`);
-      setGroup(groupResponse.data);
-    } catch (err) {
-      console.error("Error promoting to admin:", err);
-      setError(err.response?.data?.detail || "Failed to promote user to admin");
-    }
-  };
-  
-  const handleRemoveMember = async (userId) => {
-    if (window.confirm("Are you sure you want to remove this member from the group?")) {
-      try {
-        const response = await axios.post(`${API}/groups/${groupId}/members/${userId}/remove`);
-        setNotification("Member removed successfully!");
-        
-        // Refresh group data
-        const groupResponse = await axios.get(`${API}/groups/${groupId}`);
-        setGroup(groupResponse.data);
-      } catch (err) {
-        console.error("Error removing member:", err);
-        setError(err.response?.data?.detail || "Failed to remove member");
-      }
-    }
-  };
-
-  if (isLoading) {
+  if (error) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="text-center font-medium">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (!userData) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => navigate("/")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-yellow-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-center font-medium">User profile data could not be loaded.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
           >
-            Go Home
+            Reload Profile
           </button>
         </div>
       </div>
@@ -2781,783 +643,218 @@ const GroupDetail = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      {notification && (
-        <div className="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
-          <span className="block sm:inline">{notification}</span>
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 h-32 relative">
           <button 
-            className="absolute top-0 bottom-0 right-0 px-4 py-3"
-            onClick={() => setNotification("")}
+            onClick={() => setIsEditing(!isEditing)} 
+            className="absolute top-4 right-4 bg-white text-indigo-600 font-bold py-2 px-4 rounded shadow-md hover:bg-indigo-50"
           >
-            <span className="text-green-500">×</span>
+            {isEditing ? "Cancel" : "Edit Profile"}
           </button>
-        </div>
-      )}
-      
-      <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-        <div className="bg-indigo-600 px-6 py-4 flex flex-col md:flex-row justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">{group.name}</h1>
-          <div className="mt-2 md:mt-0 flex items-center">
-            <span className="text-indigo-200 mr-2">Invite Code:</span>
-            <span className="bg-white text-indigo-800 font-mono font-bold py-1 px-2 rounded">{group.invite_code}</span>
-            <button
-              onClick={copyInviteCode}
-              className="ml-2 bg-indigo-500 hover:bg-indigo-400 text-white p-1 rounded"
-              title="Copy to clipboard"
-            >
-              📋
-            </button>
-          </div>
         </div>
         
         <div className="p-6">
-          {group.description && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">About</h2>
-              <p className="text-gray-700">{group.description}</p>
-            </div>
-          )}
-          
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">Members ({group.members.length}/15)</h2>
-            <div className="flex flex-wrap gap-2">
-              {group.members.map((member) => (
-                <div key={member.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 group relative">
-                  <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-300 mr-2">
-                    {member.profile_photo_url ? (
-                      <img
-                        src={member.profile_photo_url}
-                        alt={member.username}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs">
-                        {member.username.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-sm">{member.username}</span>
-                  
-                  {/* Admin badge */}
-                  {group.admins && group.admins.includes(member.id) && (
-                    <span className="ml-1 text-xs bg-indigo-200 text-indigo-800 px-1 rounded">
-                      Admin
-                    </span>
-                  )}
-                  
-                  {/* Admin controls - only show if current user is an admin */}
-                  {group.admins && group.admins.includes(user.userId) && member.id !== user.userId && (
-                    <div className="opacity-0 group-hover:opacity-100 absolute right-0 top-0 h-full flex items-center">
-                      <div className="ml-2 bg-white shadow-md rounded-md border border-gray-200 z-10">
-                        {group.admins && !group.admins.includes(member.id) ? (
-                          <button
-                            onClick={() => handlePromoteToAdmin(member.id)}
-                            className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100 border-b border-gray-200"
-                          >
-                            Make Admin
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={() => handleRemoveMember(member.id)}
-                          className="block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-100"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              <button
-                className={`w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm ${
-                  activeTab === "activities"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("activities")}
-              >
-                Activities
-              </button>
-              <button
-                className={`w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm ${
-                  activeTab === "submissions"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("submissions")}
-              >
-                Today's Challenge
-              </button>
-              <button
-                className={`w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm ${
-                  activeTab === "leaderboard"
-                    ? "border-indigo-500 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-                onClick={() => setActiveTab("leaderboard")}
-              >
-                Leaderboard
-              </button>
-            </nav>
-          </div>
-          
-          <div className="mt-6">
-            {activeTab === "activities" && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold">Activity Pool</h2>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => navigate(`/groups/${groupId}/activities/new`)}
-                      className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm"
-                    >
-                      Submit Activity
-                    </button>
-                    {!group.today_activity && (
-                      <button
-                        onClick={handleSelectDailyActivity}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded text-sm"
-                        disabled={isSelectingActivity}
-                      >
-                        {isSelectingActivity ? "Selecting..." : "Select Today's Activity"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                {group.today_activity && (
-                  <div className="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-indigo-800">Today's Challenge</h3>
-                      <span className="text-xs text-indigo-600 font-semibold">
-                        Selected at {new Date(group.today_activity.selected_for_date).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-xl font-semibold mt-2">{group.today_activity.title}</p>
-                    {group.today_activity.description && (
-                      <p className="text-gray-700 mt-1">{group.today_activity.description}</p>
-                    )}
-                    <div className="mt-4">
-                      <button
-                        onClick={() => navigate(`/groups/${groupId}/activities/${group.today_activity.id}/submit`)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-                      >
-                        Submit Photo Evidence
-                      </button>
-                    </div>
-                  </div>
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="-mt-16 md:-mt-20">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                {isEditing && previewUrl ? (
+                  <img 
+                    src={previewUrl} 
+                    alt="Profile preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : userData?.profile_photo_url ? (
+                  <img
+                    src={userData?.profile_photo_url}
+                    alt={userData?.username || 'User'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-4xl text-gray-400">{userData?.username?.charAt(0).toUpperCase() || '?'}</div>
                 )}
-                
-                <div>
-                  <h3 className="font-semibold mb-2">Pending Activities</h3>
-                  {group.pending_activities && group.pending_activities.length > 0 ? (
-                    <div className="space-y-2">
-                      {group.pending_activities.map((activity) => (
-                        <div key={activity.id} className="border rounded p-3 bg-gray-50">
-                          <p className="font-medium">{activity.title}</p>
-                          {activity.description && (
-                            <p className="text-gray-600 text-sm mt-1">{activity.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-600">No pending activities. Submit some!</p>
-                  )}
-                </div>
               </div>
-            )}
+            </div>
             
-            {activeTab === "submissions" && (
-              <div>
-                <h2 className="text-lg font-semibold mb-4">Today's Challenge</h2>
-                {group.today_activity ? (
-                  <div>
-                    <div className="bg-indigo-50 p-4 rounded-lg mb-6">
-                      <h3 className="font-bold text-lg">{group.today_activity.title}</h3>
-                      {group.today_activity.description && (
-                        <p className="mt-1">{group.today_activity.description}</p>
-                      )}
-                      <div className="mt-4">
-                        <button
-                          onClick={() => navigate(`/groups/${groupId}/activities/${group.today_activity.id}/submit`)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-                        >
-                          Submit Photo Evidence
-                        </button>
+            <div className="flex-1">
+              {!isEditing ? (
+                <>
+                  <h2 className="text-2xl font-bold text-center md:text-left">{userData?.username || 'User'}</h2>
+                  <p className="text-gray-600 mb-4 text-center md:text-left">{userData?.email || 'No email provided'}</p>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="font-semibold mb-2">Bio</h3>
+                        <p className="text-gray-700">
+                          {userData?.bio || "No bio provided yet."}
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold mb-2">Member Since</h3>
+                        <p className="text-gray-700">
+                          {userData?.created_at ? new Date(userData.created_at).toLocaleDateString() : 'Unknown date'}
+                        </p>
                       </div>
                     </div>
                     
-                    <SubmissionsList 
-                      groupId={groupId} 
-                      activityId={group.today_activity.id} 
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="font-semibold mb-2">Interests</h3>
+                        {userData?.interests && userData.interests.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {userData.interests.map((interest, index) => (
+                              <span key={index} className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                                {interest}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-700">No interests selected yet.</p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold mb-2">Stats</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-gray-50 p-2 rounded">
+                            <p className="text-sm text-gray-600">Streak</p>
+                            <p className="font-bold text-indigo-600">{userData?.streak || 0} days</p>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded">
+                            <p className="text-sm text-gray-600">Points</p>
+                            <p className="font-bold text-indigo-600">{userData?.total_points || 0}</p>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded">
+                            <p className="text-sm text-gray-600">Challenges</p>
+                            <p className="font-bold text-indigo-600">{userData?.completed_challenges || 0}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-2">
+                      Profile Photo
+                    </label>
+                    <input 
+                      type="file" 
+                      name="profilePhoto" 
+                      onChange={handleChange}
+                      accept="image/*"
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
                   </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="mb-4">No activity has been selected for today yet.</p>
+                  
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-2">
+                      Bio
+                    </label>
+                    <textarea 
+                      name="bio" 
+                      value={formData.bio} 
+                      onChange={handleChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      rows="4"
+                      placeholder="Tell us about yourself..."
+                    ></textarea>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-2">
+                      Interests
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {['Fitness', 'Outdoors', 'Art', 'Food', 'Travel', 'Music', 'Reading', 'Technology', 'Sports'].map((interest) => (
+                        <div key={interest} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`interest-${interest}`}
+                            name="interests"
+                            value={interest}
+                            checked={formData.interests.includes(interest)}
+                            onChange={handleInterestChange}
+                            className="mr-2"
+                          />
+                          <label htmlFor={`interest-${interest}`}>{interest}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {updateStatus.error && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                      {updateStatus.error}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end">
                     <button
-                      onClick={handleSelectDailyActivity}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-                      disabled={isSelectingActivity}
+                      type="submit"
+                      disabled={updateStatus.isUpdating}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
                     >
-                      {isSelectingActivity ? "Selecting..." : "Select Today's Activity"}
+                      {updateStatus.isUpdating ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
-                )}
-              </div>
-            )}
-            
-            {activeTab === "leaderboard" && (
-              <div>
-                <h2 className="text-lg font-semibold mb-4">Group Leaderboard</h2>
-                {leaderboard.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
-                      <thead>
-                        <tr>
-                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Rank</th>
-                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
-                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase">Score</th>
-                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase">Streak</th>
-                          <th className="py-2 px-4 border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold text-gray-600 uppercase">Badges</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leaderboard.map((entry, index) => (
-                          <tr key={entry.user_id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                            <td className="py-3 px-4 border-b border-gray-200">
-                              <div className="flex items-center">
-                                {index === 0 && <span className="text-yellow-500 mr-2">🥇</span>}
-                                {index === 1 && <span className="text-gray-400 mr-2">🥈</span>}
-                                {index === 2 && <span className="text-amber-600 mr-2">🥉</span>}
-                                {index > 2 && <span className="w-6 text-center">{index + 1}</span>}
-                                
-                                {entry.previous_rank > 0 && entry.rank < entry.previous_rank && (
-                                  <span className="ml-1 text-green-600 text-xs">
-                                    ↑{entry.previous_rank - entry.rank}
-                                  </span>
-                                )}
-                                {entry.previous_rank > 0 && entry.rank > entry.previous_rank && (
-                                  <span className="ml-1 text-red-600 text-xs">
-                                    ↓{entry.rank - entry.previous_rank}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 border-b border-gray-200">
-                              <div className="flex items-center">
-                                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-300 mr-2">
-                                  {entry.profile_photo_url ? (
-                                    <img
-                                      src={entry.profile_photo_url}
-                                      alt={entry.username}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs">
-                                      {entry.username.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="font-medium">{entry.username}</span>
-                                  {entry.submissions_count > 0 && (
-                                    <div className="text-xs text-gray-500">
-                                      {entry.submissions_count} submission{entry.submissions_count !== 1 ? 's' : ''}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 border-b border-gray-200 text-right font-bold">
-                              {entry.score} pts
-                            </td>
-                            <td className="py-3 px-4 border-b border-gray-200 text-right">
-                              {entry.streak > 0 ? (
-                                <span className="inline-flex items-center">
-                                  <span className="text-orange-500 mr-1">🔥</span>
-                                  {entry.streak}
-                                </span>
-                              ) : (
-                                "0"
-                              )}
-                            </td>
-                            <td className="py-3 px-4 border-b border-gray-200 text-center">
-                              <div className="flex justify-center space-x-1">
-                                {entry.badges && entry.badges.map((badge, idx) => {
-                                  let badgeEmoji = "🏆";
-                                  if (badge === "regular") badgeEmoji = "⭐";
-                                  if (badge === "committed") badgeEmoji = "💪";
-                                  if (badge === "champion") badgeEmoji = "👑";
-                                  
-                                  return (
-                                    <span 
-                                      key={idx} 
-                                      className="tooltip" 
-                                      title={badge}
-                                    >
-                                      {badgeEmoji}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-gray-600 text-center py-6">
-                    No scores yet. Complete activities to earn points!
-                  </p>
-                )}
-              </div>
-            )}
+                </form>
+              )}
+            </div>
           </div>
+        </div>
+      </div>
+      
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Activity History */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4">Recent Activity</h3>
+          {/* Placeholder for activity history */}
+          <p className="text-gray-500 italic">Activity history will appear here.</p>
+        </div>
+        
+        {/* Group Membership */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold mb-4">Your Groups</h3>
+          {/* Placeholder for groups */}
+          <p className="text-gray-500 italic">Your groups will appear here.</p>
         </div>
       </div>
     </div>
   );
 };
 
-const SubmissionsList = ({ groupId, activityId }) => {
-  const navigate = useNavigate();
-  const [submissions, setSubmissions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+const Groups = () => {
   const { user } = useAuth();
-
+  const [userGroups, setUserGroups] = useState([]);
+  const [publicGroups, setPublicGroups] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
-    const fetchSubmissions = async () => {
+    const fetchGroups = async () => {
       try {
-        const response = await axios.get(`${API}/activities/${activityId}/submissions`);
-        setSubmissions(response.data);
+        // Fetch user's groups
+        const userGroupsResponse = await axios.get(`${API}/groups/user`);
+        setUserGroups(userGroupsResponse.data || []);
+        
+        // Fetch public groups
+        const publicGroupsResponse = await axios.get(`${API}/groups/public`);
+        setPublicGroups(publicGroupsResponse.data || []);
       } catch (err) {
-        console.error("Error fetching submissions:", err);
-        setError("Failed to load submissions");
+        console.error("Error fetching groups:", err);
+        setError(err.response?.data?.detail || "Failed to load group data");
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchSubmissions();
-  }, [activityId]);
-
-  const handleVote = async (submissionId) => {
-    try {
-      await axios.post(`${API}/submissions/${submissionId}/vote`);
-      
-      // Refresh submissions after voting
-      const response = await axios.get(`${API}/activities/${activityId}/submissions`);
-      setSubmissions(response.data);
-    } catch (err) {
-      console.error("Error voting:", err);
-      alert("Failed to vote on submission");
-    }
-  };
-
+    
+    fetchGroups();
+  }, []);
+  
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        {error}
-      </div>
-    );
-  }
-
-  if (submissions.length === 0) {
-    return (
-      <div className="text-center py-6 bg-gray-50 rounded-lg">
-        <p className="text-gray-600">No submissions yet.</p>
-        <div className="mt-4">
-          <button
-            onClick={() => navigate(`/groups/${groupId}/activities/${activityId}/submit`)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Be the First to Submit!
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <h3 className="font-semibold mb-2">Submissions</h3>
-      
-      {submissions.map((submission) => (
-        <div key={submission.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
-          <div className="p-4">
-            <div className="flex items-center mb-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-300 mr-2">
-                {submission.profile_photo_url ? (
-                  <img
-                    src={submission.profile_photo_url}
-                    alt={submission.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-sm">
-                    {submission.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="font-medium">{submission.username}</div>
-                <div className="text-xs text-gray-500">
-                  {new Date(submission.submitted_at).toLocaleString()}
-                </div>
-              </div>
-            </div>
-            
-            <div className="mb-3 relative">
-              <SafeImage
-                src={submission.photo_url}
-                alt="Activity submission"
-                className="w-full h-64 object-cover rounded"
-              />
-            </div>
-            
-            <div className="flex items-center">
-              <button
-                onClick={() => handleVote(submission.id)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded ${
-                  submission.votes.includes(user.userId)
-                    ? "bg-indigo-100 text-indigo-800"
-                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                }`}
-              >
-                <span>{submission.votes.includes(user.userId) ? "★" : "☆"}</span>
-                <span>{submission.vote_count} vote{submission.vote_count !== 1 ? "s" : ""}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const SubmitActivity = () => {
-  const { groupId } = useParams();
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    emoji: "",
-    difficulty: "medium",
-    deadline_days: 7
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  
-  // Common emoji options
-  const popularEmojis = [
-    "🏃‍♂️", "🏋️‍♀️", "🧘‍♀️", "🚴‍♀️", "🥗", "🍎", "📚", "🎨", "🎭", 
-    "🎸", "🧠", "💰", "👨‍👩‍👧‍👦", "❤️", "🌱", "🌊", "🏔️", "🧹", "✍️"
-  ];
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-  
-  const handleEmojiSelect = (emoji) => {
-    setFormData({
-      ...formData,
-      emoji
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-    
-    // Basic validation
-    if (!formData.title.trim()) {
-      setError("Activity title is required");
-      setIsLoading(false);
-      return;
-    }
-    
-    try {
-      // Create FormData object for the multipart/form-data request
-      const requestData = new FormData();
-      requestData.append("title", formData.title);
-      requestData.append("description", formData.description || "");
-      requestData.append("emoji", formData.emoji || "");
-      requestData.append("group_id", groupId);
-      requestData.append("difficulty", formData.difficulty);
-      requestData.append("deadline_days", formData.deadline_days);
-      
-      await axios.post(`${API}/activities`, requestData);
-      
-      navigate(`/groups/${groupId}`, { 
-        state: { 
-          activeTab: "activities",
-          notification: "Activity submitted successfully! It can now be selected for a daily challenge."
-        }
-      });
-    } catch (err) {
-      console.error("Error submitting activity:", err);
-      setError(err.response?.data?.detail || "Failed to submit activity. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">Submit a New ACTIFY Challenge</h1>
-        </div>
-        
-        <div className="p-6">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="title">
-                Activity Title
-              </label>
-              <div className="flex">
-                <div className="w-12 flex items-center justify-center bg-gray-100 border border-r-0 border-gray-300 rounded-l">
-                  {formData.emoji || "🎯"}
-                </div>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="shadow appearance-none border rounded-r w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  placeholder="e.g., Morning Jog, Cook a New Recipe"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">
-                Choose an Emoji
-              </label>
-              <div className="flex flex-wrap gap-2 bg-gray-50 p-3 rounded">
-                {popularEmojis.map((emoji, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleEmojiSelect(emoji)}
-                    className={`text-2xl p-2 rounded hover:bg-gray-200 ${
-                      formData.emoji === emoji ? 'bg-indigo-100 border border-indigo-300' : ''
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
-                Description (Optional)
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                rows="4"
-                placeholder="Add any details or instructions..."
-              ></textarea>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="difficulty">
-                Difficulty Level
-              </label>
-              <select
-                id="difficulty"
-                name="difficulty"
-                value={formData.difficulty}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              >
-                <option value="easy">Easy - Anyone can do it</option>
-                <option value="medium">Medium - Requires some effort</option>
-                <option value="hard">Hard - Challenging activity</option>
-              </select>
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="deadline_days">
-                Available for (days)
-              </label>
-              <select
-                id="deadline_days"
-                name="deadline_days"
-                value={formData.deadline_days}
-                onChange={handleChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              >
-                <option value="3">3 days</option>
-                <option value="7">1 week</option>
-                <option value="14">2 weeks</option>
-                <option value="30">1 month</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">How long this activity will be available for selection</p>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Submitting...
-                  </span>
-                ) : "Submit Activity"}
-              </button>
-            </div>
-          </form>
-          
-          <div className="mt-6 p-4 bg-indigo-50 rounded">
-            <h3 className="font-semibold mb-2">Activity Tips</h3>
-            <ul className="text-gray-700 list-disc pl-5 space-y-1">
-              <li>Keep activities fun and engaging</li>
-              <li>Consider different skill levels in your group</li>
-              <li>Activities should be completable within a day</li>
-              <li>Make sure it's something that can be photographed as evidence</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SubmitPhoto = () => {
-  const { groupId, activityId } = useParams();
-  const navigate = useNavigate();
-  const [photo, setPhoto] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [activity, setActivity] = useState(null);
-  const [isActivityLoading, setIsActivityLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchActivityDetails = async () => {
-      setIsActivityLoading(true);
-      try {
-        // Get the group data which includes today's activity
-        const response = await axios.get(`${API}/groups/${groupId}`);
-        if (response.data.today_activity && response.data.today_activity.id === activityId) {
-          setActivity(response.data.today_activity);
-        } else {
-          setError("Invalid activity or not today's challenge");
-        }
-      } catch (err) {
-        console.error("Error fetching activity details:", err);
-        setError("Failed to load activity details");
-      } finally {
-        setIsActivityLoading(false);
-      }
-    };
-
-    fetchActivityDetails();
-  }, [groupId, activityId]);
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB");
-        return;
-      }
-      
-      setPhoto(file);
-      setError(""); // Clear any previous errors
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!photo) {
-      setError("Please select a photo to upload");
-      return;
-    }
-    
-    setIsLoading(true);
-    setError("");
-    
-    try {
-      const formData = new FormData();
-      formData.append("activity_id", activityId);
-      formData.append("photo", photo);
-      
-      await axios.post(`${API}/submissions`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        }
-      });
-      
-      // Redirect to the group page with the submissions tab active
-      navigate(`/groups/${groupId}`, { 
-        state: { 
-          activeTab: "submissions",
-          notification: "Your photo evidence has been submitted successfully!" 
-        } 
-      });
-    } catch (err) {
-      console.error("Error submitting photo:", err);
-      if (err.response?.status === 400 && err.response?.data?.detail === "Already submitted for this activity") {
-        setError("You've already submitted a photo for this activity.");
-      } else if (err.response?.status === 400 && err.response?.data?.detail === "Activity has not been selected for a challenge day") {
-        setError("This activity hasn't been selected for today's challenge.");
-      } else {
-        setError(err.response?.data?.detail || "Failed to submit photo. Please try again.");
-      }
-      setIsLoading(false);
-    }
-  };
-
-  if (isActivityLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
         <div className="flex justify-center">
@@ -3566,148 +863,894 @@ const SubmitPhoto = () => {
       </div>
     );
   }
-
-  if (error && !photo) {
+  
+  if (error) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-2xl">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
           {error}
         </div>
-        <div className="text-center mt-4">
-          <button
-            onClick={() => navigate(`/groups/${groupId}`)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Back to Group
-          </button>
-        </div>
       </div>
     );
   }
-
-  if (!activity) {
-    return (
-      <div className="container mx-auto py-8 px-4 max-w-2xl">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-          Activity not found or not selected for today. Please go back and select a daily activity first.
-        </div>
-        <div className="text-center mt-4">
-          <button
-            onClick={() => navigate(`/groups/${groupId}`)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Back to Group
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  
   return (
-    <div className="container mx-auto py-8 px-4 max-w-2xl">
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h1 className="text-2xl font-bold text-white">Submit ACTIFY Challenge Proof</h1>
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Your Groups</h1>
+        <Link
+          to="/groups/create"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Create Group
+        </Link>
+      </div>
+      
+      {userGroups.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4 mb-8">
+          <p>You are not a member of any groups yet. Join an existing group or create a new one!</p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {userGroups.map((group) => (
+            <Link
+              key={group.id}
+              to={`/groups/${group.id}`}
+              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200"
+            >
+              <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+              <div className="p-4">
+                <h2 className="text-xl font-bold mb-2">{group.name}</h2>
+                <p className="text-gray-600 mb-2">{group.members.length} members</p>
+                <p className="text-gray-700 line-clamp-2">{group.description}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+      
+      <h2 className="text-xl font-bold mb-4">Public Groups</h2>
+      {publicGroups.length === 0 ? (
+        <div className="bg-gray-50 rounded-lg p-4">
+          <p className="text-gray-500 italic">No public groups available.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {publicGroups.map((group) => (
+            <div 
+              key={group.id} 
+              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200"
+            >
+              <div className="h-24 bg-gradient-to-r from-gray-300 to-gray-400"></div>
+              <div className="p-4">
+                <h2 className="text-lg font-bold mb-2">{group.name}</h2>
+                <p className="text-gray-600 mb-2">{group.members.length} members</p>
+                <p className="text-gray-700 line-clamp-2 mb-4">{group.description}</p>
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-4 rounded text-sm"
+                  // Join group functionality would go here
+                >
+                  Join Group
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CreateGroup = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    isPrivate: true
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value
+    });
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    try {
+      const response = await axios.post(`${API}/groups`, formData);
+      navigate(`/groups/${response.data.id}`);
+    } catch (err) {
+      console.error("Error creating group:", err);
+      setError(err.response?.data?.detail || "Failed to create group");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-2xl font-bold mb-6">Create a New Group</h1>
         
-        <div className="p-6">
-          <div className="mb-6 bg-indigo-50 p-4 rounded">
-            <h2 className="font-bold text-lg">{activity.title}</h2>
-            {activity.description && <p className="mt-1">{activity.description}</p>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="name">
+              Group Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="description">
+              Description
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              rows="4"
+              required
+            ></textarea>
+          </div>
+          
+          <div className="flex items-center">
+            <input
+              id="isPrivate"
+              name="isPrivate"
+              type="checkbox"
+              checked={formData.isPrivate}
+              onChange={handleChange}
+              className="mr-2"
+            />
+            <label className="text-gray-700" htmlFor="isPrivate">
+              Private Group (invitation only)
+            </label>
           </div>
           
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
               {error}
             </div>
           )}
           
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="photo">
-                Your Photo
-              </label>
-              
-              {previewUrl ? (
-                <div className="mb-4 relative">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="w-full h-64 object-cover rounded border"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setPhoto(null);
-                      setPreviewUrl(null);
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    title="Remove photo"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <div 
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-4 cursor-pointer hover:bg-gray-50"
-                  onClick={() => document.getElementById('photo').click()}
-                >
-                  <div className="text-gray-600 mb-2">📷 No photo selected</div>
-                  <div className="text-sm text-gray-500">Click here to choose a photo</div>
-                </div>
-              )}
-              
-              <input
-                type="file"
-                id="photo"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoChange}
-                className="hidden w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-              />
-              
-              <button
-                type="button"
-                onClick={() => document.getElementById('photo').click()}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
-              >
-                {previewUrl ? "Change Photo" : "Select Photo"}
-              </button>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => navigate("/groups")}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+            >
+              {isSubmitting ? "Creating..." : "Create Group"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const GroupDetail = () => {
+  const { groupId } = useParams();
+  const [group, setGroup] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchGroupDetails = async () => {
+      try {
+        const response = await axios.get(`${API}/groups/${groupId}`);
+        setGroup(response.data);
+      } catch (err) {
+        console.error("Error fetching group details:", err);
+        setError(err.response?.data?.detail || "Failed to load group data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchGroupDetails();
+  }, [groupId]);
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+          {error}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="h-48 bg-gradient-to-r from-indigo-500 to-purple-600 relative">
+          <div className="absolute bottom-4 left-6">
+            <h1 className="text-3xl font-bold text-white">{group.name}</h1>
+            <p className="text-white opacity-80">{group.members.length} members</p>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold mb-2">About</h2>
+            <p className="text-gray-700">{group.description}</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h2 className="text-xl font-bold mb-4">Members</h2>
+              <div className="space-y-2">
+                {group.members.map((member) => (
+                  <div key={member.id} className="flex items-center bg-gray-50 p-2 rounded">
+                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+                      {member.profile_photo_url ? (
+                        <img src={member.profile_photo_url} alt={member.username} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <span>{member.username.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{member.username}</p>
+                      {member.id === group.owner_id && (
+                        <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                          Owner
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                disabled={isLoading || !photo}
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Uploading...
-                  </span>
-                ) : "Submit Evidence"}
-              </button>
+            <div>
+              <h2 className="text-xl font-bold mb-4">This Week's Activities</h2>
+              {group.activities && group.activities.length > 0 ? (
+                <div className="space-y-3">
+                  {group.activities.map((activity) => (
+                    <div key={activity.id} className="bg-gray-50 p-3 rounded">
+                      <p className="font-semibold">{activity.title}</p>
+                      <p className="text-gray-600 text-sm">{activity.description}</p>
+                      <div className="mt-2 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          Suggested by {activity.author_username}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          activity.status === 'selected' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {activity.status === 'selected' ? 'Selected' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 italic">No activities suggested for this week yet.</p>
+              )}
+              
+              <div className="mt-4">
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
+                  // Suggest activity functionality would go here
+                >
+                  Suggest an Activity
+                </button>
+              </div>
             </div>
-          </form>
-          
-          <div className="mt-6 p-4 bg-indigo-50 rounded">
-            <h3 className="font-semibold mb-2">Submission Guidelines</h3>
-            <ul className="text-gray-700 list-disc pl-5 space-y-1">
-              <li>Photo must clearly show you completing the activity</li>
-              <li>Make sure the image is clear and well-lit</li>
-              <li>Photos are timestamped when submitted</li>
-              <li>Group members will vote on submissions</li>
-              <li>Maximum file size: 5MB</li>
-            </ul>
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const Challenges = () => {
+  const [activeChallenges, setActiveChallenges] = useState([]);
+  const [pastChallenges, setPastChallenges] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        // Fetch active challenges
+        const activeResponse = await axios.get(`${API}/challenges/active`);
+        setActiveChallenges(activeResponse.data || []);
+        
+        // Fetch past challenges
+        const pastResponse = await axios.get(`${API}/challenges/history`);
+        setPastChallenges(pastResponse.data || []);
+      } catch (err) {
+        console.error("Error fetching challenges:", err);
+        setError(err.response?.data?.detail || "Failed to load challenge data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchChallenges();
+  }, []);
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+          {error}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-2xl font-bold mb-6">Challenges</h1>
+      
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4">Today's Challenge</h2>
+        {activeChallenges.find(c => c.is_today) ? (
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg border border-indigo-100">
+            <h3 className="font-bold text-lg text-indigo-900 mb-2">
+              {activeChallenges.find(c => c.is_today).title}
+            </h3>
+            <p className="text-gray-700 mb-4">
+              {activeChallenges.find(c => c.is_today).description}
+            </p>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">
+                Ends in: {activeChallenges.find(c => c.is_today).time_remaining}
+              </span>
+              <button
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+                // Submit evidence functionality would go here
+              >
+                Submit Evidence
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500 italic">No challenge active today.</p>
+        )}
+      </div>
+      
+      <h2 className="text-xl font-bold mb-4">Upcoming Challenges</h2>
+      {activeChallenges.filter(c => !c.is_today).length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {activeChallenges.filter(c => !c.is_today).map((challenge) => (
+            <div key={challenge.id} className="bg-white rounded-lg shadow-md p-4">
+              <h3 className="font-bold text-lg mb-2">{challenge.title}</h3>
+              <p className="text-gray-700 mb-2">{challenge.description}</p>
+              <p className="text-sm text-gray-600">Starts: {formatDate(challenge.start_date)}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 italic mb-12">No upcoming challenges.</p>
+      )}
+      
+      <h2 className="text-xl font-bold mb-4">Past Challenges</h2>
+      {pastChallenges.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pastChallenges.map((challenge) => (
+            <div key={challenge.id} className="bg-white rounded-lg shadow-md p-4">
+              <h3 className="font-bold text-lg mb-2">{challenge.title}</h3>
+              <p className="text-gray-700 mb-2">{challenge.description}</p>
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-gray-600">Date: {formatDate(challenge.date)}</p>
+                {challenge.completed ? (
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
+                    Completed
+                  </span>
+                ) : (
+                  <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">
+                    Missed
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-gray-500 italic">No past challenges.</p>
+      )}
+    </div>
+  );
+};
+
+const Leaderboard = () => {
+  const [globalLeaders, setGlobalLeaders] = useState([]);
+  const [friendLeaders, setFriendLeaders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        // Fetch global leaderboard
+        const globalResponse = await axios.get(`${API}/leaderboard/global`);
+        setGlobalLeaders(globalResponse.data || []);
+        
+        // Fetch friends leaderboard
+        const friendsResponse = await axios.get(`${API}/leaderboard/friends`);
+        setFriendLeaders(friendsResponse.data || []);
+      } catch (err) {
+        console.error("Error fetching leaderboard:", err);
+        setError(err.response?.data?.detail || "Failed to load leaderboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, []);
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+          {error}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-2xl font-bold mb-6">Leaderboard</h1>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Global Leaders</h2>
+          {globalLeaders.length > 0 ? (
+            <div className="space-y-3">
+              {globalLeaders.map((user, index) => (
+                <div 
+                  key={user.id} 
+                  className={`flex items-center p-3 rounded-lg ${
+                    index < 3 ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100' : 'bg-gray-50'
+                  }`}
+                >
+                  <div className="w-8 h-8 flex items-center justify-center font-bold text-indigo-600 mr-3">
+                    {index + 1}
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-4">
+                    {user.profile_photo_url ? (
+                      <img src={user.profile_photo_url} alt={user.username} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span>{user.username.charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold">{user.username}</p>
+                    <p className="text-xs text-gray-600">Streak: {user.streak} days</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-indigo-600">{user.total_points} pts</p>
+                    <p className="text-xs text-gray-600">{user.completed_challenges} challenges</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic">No global leaderboard data available.</p>
+          )}
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Friend Leaders</h2>
+          {friendLeaders.length > 0 ? (
+            <div className="space-y-3">
+              {friendLeaders.map((user, index) => (
+                <div 
+                  key={user.id} 
+                  className={`flex items-center p-3 rounded-lg ${
+                    index < 3 ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100' : 'bg-gray-50'
+                  }`}
+                >
+                  <div className="w-8 h-8 flex items-center justify-center font-bold text-indigo-600 mr-3">
+                    {index + 1}
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-4">
+                    {user.profile_photo_url ? (
+                      <img src={user.profile_photo_url} alt={user.username} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span>{user.username.charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold">{user.username}</p>
+                    <p className="text-xs text-gray-600">Streak: {user.streak} days</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-indigo-600">{user.total_points} pts</p>
+                    <p className="text-xs text-gray-600">{user.completed_challenges} challenges</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 italic">No friend leaderboard data available. Add friends to see their rankings.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Register = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    name: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError("");
+    
+    try {
+      // Register user
+      const response = await axios.post(`${API}/auth/register`, {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        name: formData.name
+      });
+      
+      // Get token
+      const tokenResponse = await axios.post(`${API}/auth/token`, 
+        new URLSearchParams({
+          'username': formData.username,
+          'password': formData.password
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+      
+      // Login user
+      login(
+        tokenResponse.data.access_token,
+        tokenResponse.data.user_id,
+        tokenResponse.data.username
+      );
+      
+      // Redirect to home
+      navigate("/");
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError(err.response?.data?.detail || "Registration failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-2xl font-bold mb-6 text-center">Join ACTIFY</h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={formData.username}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="name">
+              Full Name
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              value={formData.name}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+              minLength="8"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="confirmPassword">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+              {error}
+            </div>
+          )}
+          
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
+            >
+              {isSubmitting ? "Creating Account..." : "Sign Up"}
+            </button>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-gray-600">
+              Already have an account?{" "}
+              <Link to="/login" className="text-indigo-600 hover:text-indigo-800">
+                Log In
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const Login = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    username: "",
+    password: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  
+  const from = location.state?.from?.pathname || "/";
+  
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    
+    try {
+      const response = await axios.post(`${API}/auth/token`, 
+        new URLSearchParams({
+          'username': formData.username,
+          'password': formData.password
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+      
+      login(
+        response.data.access_token,
+        response.data.user_id,
+        response.data.username
+      );
+      
+      navigate(from, { replace: true });
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.response?.data?.detail || "Login failed. Please check your credentials.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 className="text-2xl font-bold mb-6 text-center">Welcome Back</h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="username">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={formData.username}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-gray-700 font-bold mb-2" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              required
+            />
+          </div>
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+              {error}
+            </div>
+          )}
+          
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
+            >
+              {isSubmitting ? "Logging In..." : "Log In"}
+            </button>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-gray-600">
+              Don't have an account?{" "}
+              <Link to="/register" className="text-indigo-600 hover:text-indigo-800">
+                Sign Up
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const NotFound = () => {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="container mx-auto py-16 px-4 text-center">
+      <h1 className="text-5xl font-bold text-indigo-900 mb-4">404</h1>
+      <h2 className="text-2xl font-semibold mb-6">Page Not Found</h2>
+      <p className="text-gray-600 mb-8 max-w-md mx-auto">
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+      <button
+        onClick={() => navigate("/")}
+        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg"
+      >
+        Go Home
+      </button>
     </div>
   );
 };
@@ -3716,23 +1759,154 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="App min-h-screen bg-gray-100">
-          <Navbar />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<PrivateRoute element={<Home />} />} />
-            <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
-            <Route path="/groups/create" element={<PrivateRoute element={<CreateGroup />} />} />
-            <Route path="/groups/join" element={<PrivateRoute element={<JoinGroup />} />} />
-            <Route path="/groups/:groupId" element={<PrivateRoute element={<GroupDetail />} />} />
-            <Route path="/groups/:groupId/activities/new" element={<PrivateRoute element={<SubmitActivity />} />} />
-            <Route path="/groups/:groupId/activities/:activityId/submit" element={<PrivateRoute element={<SubmitPhoto />} />} />
-          </Routes>
+        <div className="min-h-screen bg-gray-50">
+          <nav className="bg-white shadow-md">
+            <div className="container mx-auto px-4">
+              <div className="flex justify-between h-16">
+                <div className="flex items-center">
+                  <Link to="/" className="text-2xl font-bold text-indigo-600">
+                    ACTIFY
+                  </Link>
+                </div>
+                
+                <div className="flex items-center">
+                  <HeaderLinks />
+                </div>
+              </div>
+            </div>
+          </nav>
+          
+          <main>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
+              <Route path="/groups" element={<PrivateRoute element={<Groups />} />} />
+              <Route path="/groups/create" element={<PrivateRoute element={<CreateGroup />} />} />
+              <Route path="/groups/:groupId" element={<PrivateRoute element={<GroupDetail />} />} />
+              <Route path="/challenges" element={<PrivateRoute element={<Challenges />} />} />
+              <Route path="/leaderboard" element={<PrivateRoute element={<Leaderboard />} />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+          
+          <footer className="bg-gray-800 text-white py-8">
+            <div className="container mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                  <h3 className="text-xl font-bold mb-4">ACTIFY</h3>
+                  <p className="text-gray-300">
+                    Daily challenges to connect with friends and build lasting habits.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Quick Links</h3>
+                  <ul className="space-y-2">
+                    <li>
+                      <Link to="/" className="text-gray-300 hover:text-white">
+                        Home
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/groups" className="text-gray-300 hover:text-white">
+                        Groups
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/challenges" className="text-gray-300 hover:text-white">
+                        Challenges
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/leaderboard" className="text-gray-300 hover:text-white">
+                        Leaderboard
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold mb-4">Connect With Us</h3>
+                  <div className="flex space-x-4">
+                    <a href="#" className="text-gray-300 hover:text-white">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                    <a href="#" className="text-gray-300 hover:text-white">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                    <a href="#" className="text-gray-300 hover:text-white">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400 text-sm">
+                &copy; {new Date().getFullYear()} ACTIFY. All rights reserved.
+              </div>
+            </div>
+          </footer>
         </div>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
+// Additional Components
+const HeaderLinks = () => {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  return (
+    <div className="hidden md:flex items-center space-x-4">
+      <Link to="/" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+        Home
+      </Link>
+      
+      {isAuthenticated ? (
+        <>
+          <Link to="/groups" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+            Groups
+          </Link>
+          <Link to="/challenges" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+            Challenges
+          </Link>
+          <Link to="/leaderboard" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+            Leaderboard
+          </Link>
+          <Link to="/profile" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+            Profile
+          </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
+            className="px-3 py-2 text-gray-700 hover:text-red-600"
+          >
+            Logout
+          </button>
+        </>
+      ) : (
+        <>
+          <Link to="/login" className="px-3 py-2 text-gray-700 hover:text-indigo-600">
+            Login
+          </Link>
+          <Link 
+            to="/register" 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+          >
+            Sign Up
+          </Link>
+        </>
+      )}
+    </div>
+  );
+};
 
 export default App;
