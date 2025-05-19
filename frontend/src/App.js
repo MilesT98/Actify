@@ -76,6 +76,66 @@ const PrivateRoute = ({ element }) => {
 };
 
 // Components
+const SafeImage = ({ src, alt, className, fallbackClassName, children }) => {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  
+  // Attempt to load image from URL and potentially add CORS parameters
+  const fullImageUrl = src && !src.includes('?') ? `${src}?${new Date().getTime()}` : src;
+  
+  const handleImageError = () => {
+    console.error(`Failed to load image: ${src}`);
+    setImgError(true);
+  };
+  
+  const handleImageLoad = () => {
+    setImgLoaded(true);
+  };
+  
+  return (
+    <>
+      {src && !imgError ? (
+        <img
+          src={fullImageUrl}
+          alt={alt || "Image"}
+          className={className}
+          style={{ display: imgLoaded ? "block" : "none" }}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
+          crossOrigin="anonymous"
+        />
+      ) : (
+        <div className={fallbackClassName || className}>
+          {children || (
+            <div className="flex items-center justify-center h-full w-full bg-gray-200 text-gray-400">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-1/3 w-1/3" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                />
+              </svg>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {src && !imgLoaded && !imgError && (
+        <div className={`${className} absolute inset-0 flex items-center justify-center bg-gray-100`}>
+          <div className="spinner"></div>
+        </div>
+      )}
+    </>
+  );
+};
+
 const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
