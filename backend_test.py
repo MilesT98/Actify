@@ -4,7 +4,7 @@ import sys
 import json
 from datetime import datetime
 
-class AuthAPITester:
+class ActifyAPITester:
     def __init__(self, base_url="https://e1ffcce3-e7c4-41ff-9685-adbbd39fef6d.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.token = None
@@ -12,6 +12,7 @@ class AuthAPITester:
         self.username = None
         self.tests_run = 0
         self.tests_passed = 0
+        self.group_ids = []
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
@@ -112,36 +113,135 @@ class AuthAPITester:
             "users/me",
             200
         )
-        return success
+        return success, response
+
+    def test_get_user_groups(self):
+        """Test getting user groups"""
+        if not self.token:
+            print("❌ Cannot test user groups - not logged in")
+            return False
+            
+        success, response = self.run_test(
+            "Get User Groups",
+            "GET",
+            "groups/user",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            # Store group IDs for later use
+            self.group_ids = [group["id"] for group in response]
+            print(f"Found {len(self.group_ids)} groups")
+        
+        return success, response
+
+    def test_get_active_challenges(self):
+        """Test getting active challenges"""
+        if not self.token:
+            print("❌ Cannot test active challenges - not logged in")
+            return False
+            
+        success, response = self.run_test(
+            "Get Active Challenges",
+            "GET",
+            "challenges/active",
+            200
+        )
+        return success, response
+
+    def test_get_global_leaderboard(self):
+        """Test getting global leaderboard"""
+        if not self.token:
+            print("❌ Cannot test leaderboard - not logged in")
+            return False
+            
+        success, response = self.run_test(
+            "Get Global Leaderboard",
+            "GET",
+            "leaderboard/global",
+            200
+        )
+        return success, response
+
+    def test_get_group_details(self, group_id):
+        """Test getting group details"""
+        if not self.token:
+            print("❌ Cannot test group details - not logged in")
+            return False
+            
+        success, response = self.run_test(
+            f"Get Group Details for {group_id}",
+            "GET",
+            f"groups/{group_id}",
+            200
+        )
+        return success, response
+
+    def test_get_group_leaderboard(self, group_id):
+        """Test getting group leaderboard"""
+        if not self.token:
+            print("❌ Cannot test group leaderboard - not logged in")
+            return False
+            
+        success, response = self.run_test(
+            f"Get Group Leaderboard for {group_id}",
+            "GET",
+            f"groups/{group_id}/leaderboard",
+            200
+        )
+        return success, response
 
 def main():
     # Setup
-    tester = AuthAPITester()
+    tester = ActifyAPITester()
     
-    # Test credentials
-    username = "testuserAuto"
-    email = "testauto@example.com"
-    password = "testpassword123"
+    # Test credentials - using the ones specified in the request
+    username = "testuser"
+    password = "testpassword"
     
-    print("\n===== TESTING USER AUTHENTICATION API =====\n")
-    
-    # Test registration
-    reg_success, reg_response = tester.test_register(username, email, password)
-    if not reg_success:
-        if "detail" in reg_response and "already registered" in reg_response["detail"]:
-            print("⚠️ User already exists, continuing with login test")
-        else:
-            print("❌ Registration failed with unexpected error")
+    print("\n===== TESTING ACTIFY API =====\n")
     
     # Test login
     if not tester.test_login(username, password):
         print("❌ Login failed, stopping tests")
         return 1
     
+    print("\n===== TESTING USER PROFILE =====\n")
     # Test getting user profile
-    if not tester.test_get_user_profile():
+    profile_success, profile_data = tester.test_get_user_profile()
+    if not profile_success:
         print("❌ User profile retrieval failed")
-        return 1
+    
+    print("\n===== TESTING GROUPS =====\n")
+    # Test getting user groups
+    groups_success, groups_data = tester.test_get_user_groups()
+    if not groups_success:
+        print("❌ User groups retrieval failed")
+    else:
+        print(f"Found {len(tester.group_ids)} groups")
+        
+        # Test each group's details
+        for group_id in tester.group_ids:
+            group_success, group_data = tester.test_get_group_details(group_id)
+            if not group_success:
+                print(f"❌ Group details retrieval failed for {group_id}")
+            
+            # Test group leaderboard
+            leaderboard_success, leaderboard_data = tester.test_get_group_leaderboard(group_id)
+            if not leaderboard_success:
+                print(f"❌ Group leaderboard retrieval failed for {group_id}")
+    
+    print("\n===== TESTING CHALLENGES =====\n")
+    # Test getting active challenges
+    challenges_success, challenges_data = tester.test_get_active_challenges()
+    if not challenges_success:
+        print("❌ Active challenges retrieval failed")
+    
+    print("\n===== TESTING LEADERBOARD =====\n")
+    # Test getting global leaderboard
+    leaderboard_success, leaderboard_data = tester.test_get_global_leaderboard()
+    if not leaderboard_success:
+        print("❌ Global leaderboard retrieval failed")
     
     # Print results
     print(f"\n📊 Tests passed: {tester.tests_passed}/{tester.tests_run}")
