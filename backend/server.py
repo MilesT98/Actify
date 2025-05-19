@@ -28,7 +28,10 @@ load_dotenv(ROOT_DIR / '.env')
 uploads_dir = Path("/app/backend/uploads")
 uploads_dir.mkdir(exist_ok=True)
 
-# MongoDB connection
+# Helper function to get base URL for uploads
+def get_base_url():
+    # This would typically come from environment variables
+    return "https://4d5ee6f8-8f9d-4296-b4a3-e221abe214ab.preview.emergentagent.com"
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
